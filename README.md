@@ -105,6 +105,7 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `crates/opal-encode`: keying (`key.rs`), trim, atlas packing, bleed and alpha stacking, shared by the CLI and the Studio.
 - `crates/opal-cli`: the `opal encode` command, which uses ffmpeg/ffprobe for decode and encode.
 - `crates/opal-studio`: the Studio's wasm core (wasm-bindgen).
+- `.claude/skills/opal-video-sprites/`: a Claude Code skill for generating game-ready video sprites with fal (stills → pinned loops → QA → encode), plus `tools/sprite_qa.py` (border-clipping and loop checks).
 - `web/game/`: Opal Dojo. `game/` holds its fal-generated sources and the build commands.
 - `web/player.html`: drop any `.opal` file to play all its clips through the real runtime.
 - `web/studio/`: the Studio UI. `web/compare.html` benchmarks Opal against `<video>`; `web/keying.html` previews keying.

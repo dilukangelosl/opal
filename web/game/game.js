@@ -174,8 +174,9 @@ function draw() {
     put(e.id, impA, impK * depth, impAn, e.x, GROUND + e.lane, e.facing);
   }
   for (const s of smokes) {
-    const q = opal.progress(s.id);
-    opal.set(s.id, s.x * S, s.y * S, smokeK * S, q > 0.6 ? Math.max(0, 1 - (q - 0.6) / 0.4) : 1);
+    // the clip starts on the full puff (its pop-in was cut: it reached the frame edge), so pop it in here
+    const q = opal.progress(s.id), pop = q < 0.1 ? 0.45 + 0.55 * Math.sin((q / 0.1) * Math.PI / 2) : 1;
+    opal.set(s.id, s.x * S, s.y * S, smokeK * S * pop, q > 0.75 ? Math.max(0, 1 - (q - 0.75) / 0.25) : 1);
   }
   $('score').textContent = score.toLocaleString();
   const hp = Math.max(0, Math.min(5, hero.hp));
