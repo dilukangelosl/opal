@@ -7,7 +7,7 @@
 
 <p align="center">Transparent video sprites for web games.</p>
 
-<p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/opal/web/game2/">Play Rift Warden</a> · <a href="https://dilukangelosl.github.io/opal/web/game/">Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
+<p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/ashvanes-hoard/">Play Ashvane's Hoard (slot)</a> · <a href="https://dilukangelosl.github.io/opal/web/game2/">Play Rift Warden</a> · <a href="https://dilukangelosl.github.io/opal/web/game/">Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
 
 <p align="center">
   <a href="https://dilukangelosl.github.io/opal/web/game2/"><img src="docs/media/rift-warden-gameplay.gif" width="720" alt="Rift Warden gameplay: a knight-mage slashes skeletons, fireballs explode and thunder strikes every enemy; every character and effect is a transparent AI-generated video sprite"></a>
@@ -43,6 +43,13 @@ import { createPixiOpal } from 'opal-sprites/pixi';   // const opal = await crea
 ```
 The package lives in [`packages/opal-sprites`](packages/opal-sprites). Demos: [Rift Warden on PixiJS](https://dilukangelosl.github.io/opal/web/game2/?renderer=pixi) (the whole game, unchanged) and a [small AnimatedSprite scene](https://dilukangelosl.github.io/opal/web/pixi/).
 It publishes to npm from GitHub Actions when you publish a release tagged `v<version>` (see `.github/workflows/publish.yml`).
+
+## Ashvane's Hoard (slot game, separate repo)
+[![Ashvane's Hoard: the dragon breathes fire across the reels](https://raw.githubusercontent.com/dilukangelosl/ashvanes-hoard/main/docs/dragonfire.jpg)](https://dilukangelosl.github.io/ashvanes-hoard/)
+
+A dragon-heist slot where the dragon, its fire breath, the animated lava frame, every symbol and every effect is
+an `.opal` video sprite. It uses `opal-sprites` from npm: 11 files, 7.5 MB, 50+ animated sprites at 120 fps.
+[Play](https://dilukangelosl.github.io/ashvanes-hoard/) · [source](https://github.com/dilukangelosl/ashvanes-hoard)
 
 ## Rift Warden (showcase game)
 `/web/game2/`: a knight-mage holds a ruined temple against skeleton warriors, rift bats and an obsidian golem boss.

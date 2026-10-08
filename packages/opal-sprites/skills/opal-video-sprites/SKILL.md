@@ -209,3 +209,23 @@ s.textures = hero.clips.run; s.anchor.set(...Object.values(hero.feetAnchor('run'
 | Run clip gets dust puffs behind the feet that cross the edge | the model adds ground dust even when told "no dust" | regenerate on a canvas with more room behind, and shift the anchor in code (`(dx/1024)*clip.width`) |
 | A wave of stills/clips seems lost after a tool timeout | the submit timed out but the jobs ran | `search_request_history` before resubmitting, never blind retries |
 | Boss has no walk cycle | a walk cycle for a huge creature is costly and often slides | idle + attack only; reposition through portals, teleports or a cutaway |
+| Big action clips (roar, breath) clip at the edge: wings or fire reach the frame | the model lunges and spreads wings and pushes in on big moves, even when told "camera locked" | keep it, fade the border: `feather.sh` (alpha-merge a ramp mask toward the backdrop), and pin first and last frame to the idle still so it cuts in and out seamlessly |
+| Effect isn't attached to the character (fire jet off the mouth, wrong timing) | separate effect sprite placed by guesswork | bake it in: generate "breathes fire to the right" on a wide 16:9 canvas with the character at the left, then measure the fire front per frame to time gameplay (cells ignite as the front passes) |
+| GPU memory far bigger than the clips | an `.opal` file's frame layers are as large as its largest clip, in each dimension | one file per size class (wide breath, tall pillar, square symbols); no mixing |
+
+## 7. Lessons from Ashvane's Hoard (a slot built from video)
+- **UI chrome can be video too.** Generate a board frame still (inside and outside flat green), animate it pinned,
+  and measure the opening (`tools/measure_frame.py` in ashvanes-hoard: it measures vertical extents *away* from
+  the centre, because crests hang into the opening there). Size the grid to the opening and draw the frame
+  **after** the symbols (load order = draw order): it masks symbols as they tumble in and out. Fade symbols out
+  past the opening's top and bottom too.
+- **Stretch the still, not the grid.** A generated frame's opening never matches your grid ratio; scale the still
+  non-uniformly (about 1.2×) before animating, then use slightly non-square cells for the rest.
+- **1080P for big on-screen pieces** (`resolution: "1080P"` on h3-max): the hero character, frame and logo. 768P for
+  symbols and effects. Then encode at the on-screen size.
+- **Desync identical loops.** Twenty rubies spawned together shimmer in lockstep. The runtime has no seek, so
+  fast-forward each new sprite once: for one frame set `speed = randomOffsetSeconds / dt`, then reset it to 1.
+- **Logos with text work** on nano-banana-2 (21:9, 2K). Animate them pinned ("shine sweeps across, wings lift a little").
+- **Anticipation / win-frame / pillar loops are cheap and sell the game.** Fire frames around winning cells, fire
+  pillars over teasing columns, an eruption for feature triggers: each is a still plus a 2 s pinned loop.
+- zsh: `"color=0x$bg:s=768x768"` hits zsh's `:s` modifier. Write `${bg}`.
