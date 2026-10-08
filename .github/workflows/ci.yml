@@ -7,7 +7,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@v2
@@ -18,7 +18,7 @@ jobs:
         run: |
           ./build-web.sh
           git diff --stat --exit-code -- packages/opal-sprites/src/runtime.js web/opal.js || (echo "::error::run ./build-web.sh and commit the result" && exit 1)
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Test and pack the npm package
         working-directory: packages/opal-sprites

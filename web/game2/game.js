@@ -22,12 +22,14 @@ function fit() {
 fit(); addEventListener('resize', fit);
 
 // ---------- assets (load order = draw order)
-const opal = await createOpal(cv);
+// ?renderer=pixi runs the identical game on PixiJS via opal-sprites/pixi (same API)
+const usePixi = new URLSearchParams(location.search).get('renderer') === 'pixi';
+const opal = usePixi ? await (await import('opal-sprites/pixi')).createPixiOpal(cv) : await createOpal(cv);
 const lod = { scale: mobile ? 0.6 : 1 };
 const names = ['portal', 'orb', 'skeleton', 'golem', 'warden', 'bat', 'fireball', 'fx', 'lightning'];
 const A = Object.fromEntries((await Promise.all(names.map((n) => opal.load(`assets/${n}.opal`, lod)))).map((a, i) => [names[i], a]));
 const totalFrames = Object.values(A).reduce((s, a) => s + a.frames, 0);
-$('loading').textContent = `${totalFrames} video frames from ${names.length} .opal files decoded to the GPU · made with Opal`;
+$('loading').innerHTML = `${totalFrames} video frames from ${names.length} .opal files · rendered by ${usePixi ? 'PixiJS 8 (opal-sprites/pixi)' : 'Opal'} · <a href="?renderer=${usePixi ? 'opal' : 'pixi'}" style="color:inherit">switch to ${usePixi ? 'Opal' : 'PixiJS'}</a>`;
 
 const anchor = (a, clip) => {
   const c = a.clips[clip], [bx, by, bw, bh] = c.box;
@@ -425,7 +427,7 @@ function frame(now) {
   if (fpsAcc > 0.5) { fps = fpsN / fpsAcc; fpsAcc = fpsN = 0; }
   if (state !== 'title') {
     const n = 1 + enemies.length + portals.length + orbs.length + shots.length + fxs.length + ghosts.length + (boss ? 1 : 0);
-    $('tech').textContent = `${n} video sprites · ${fps.toFixed(0)} fps`;
+    $('tech').textContent = `${n} video sprites · ${fps.toFixed(0)} fps · ${usePixi ? 'PixiJS' : 'Opal'}`;
   }
   requestAnimationFrame(frame);
 }

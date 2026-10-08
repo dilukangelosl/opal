@@ -181,6 +181,8 @@ const s = hero.sprite('idle', { anchor: hero.feetAnchor('idle') }); // AnimatedS
 s.scale.x = -1;                                          // face left
 s.textures = hero.clips.run; s.anchor.set(...Object.values(hero.feetAnchor('run'))); s.loop = hero.loops('run'); s.gotoAndPlay(0);
 ```
+- **Whole games:** `createPixiOpal(canvas)` has the same API as `createOpal`, so a game written for Opal runs on
+  Pixi by swapping that one line (Rift Warden: `?renderer=pixi`). Use `{ app, stage }` to draw into an existing scene.
 - Frames are trimmed textures whose `orig` is the whole video cell, so clips of one character line up. Re-apply
   `feetAnchor(clip)` when switching clips, because each clip has its own visible box.
 - Clips generated on a *different* padded canvas (the shifted run) need the same x correction as in §1b.

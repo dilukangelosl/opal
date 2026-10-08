@@ -12,3 +12,8 @@ export interface PixiOpal {
   destroy(): void;
 }
 export function loadOpal(src: string | URL | ArrayBuffer | Uint8Array, opts?: { scale?: number; pageSize?: number }): Promise<PixiOpal>;
+
+import type { Application, Container } from 'pixi.js';
+import type { OpalRuntime } from './index';
+/** Opal's runtime API (load/spawn/set/play/speed/progress/done/kill/render) drawn by PixiJS. */
+export function createPixiOpal(canvas: HTMLCanvasElement, opts?: { app?: Application; stage?: Container }): Promise<Omit<OpalRuntime, 'gl'> & { app: Application }>;

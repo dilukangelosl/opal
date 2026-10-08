@@ -33,6 +33,16 @@ Each frame is a trimmed `Texture` on a few shared pages, with `orig` set to the 
 of a character shares one anchor point and Pixi batches them. `loadOpal(src, { scale: 0.5 })` keeps frames at
 half size (a quarter of the memory), which suits phones.
 
+### Port a whole game to Pixi in one line
+`createPixiOpal` has exactly the same API as Opal's runtime (`load`, `spawn`, `set`, `play`, `speed`, `progress`,
+`done`, `kill`, `render`). [Rift Warden](https://dilukangelosl.github.io/opal/web/game2/?renderer=pixi) runs
+unchanged on Pixi this way:
+```js
+import { createPixiOpal } from 'opal-sprites/pixi';
+const opal = await createPixiOpal(canvas);            // instead of createOpal(canvas)
+// or draw into your own scene: createPixiOpal(canvas, { app, stage: myContainer })
+```
+
 ## Opal runtime (fastest)
 Opal's own renderer keeps every frame in one GPU texture array and draws each file with a single instanced call.
 That's 300+ animated video sprites at 120 fps.

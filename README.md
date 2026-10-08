@@ -37,8 +37,11 @@ s.textures = hero.clips.slash;                                      // switch cl
 
 // or Opal's own renderer (fastest: one instanced draw per file)
 import { createOpal } from 'opal-sprites';
+
+// or port a whole Opal game to Pixi: same API, one line
+import { createPixiOpal } from 'opal-sprites/pixi';   // const opal = await createPixiOpal(canvas)
 ```
-The package lives in [`packages/opal-sprites`](packages/opal-sprites); [PixiJS demo](https://dilukangelosl.github.io/opal/web/pixi/).
+The package lives in [`packages/opal-sprites`](packages/opal-sprites). Demos: [Rift Warden on PixiJS](https://dilukangelosl.github.io/opal/web/game2/?renderer=pixi) (the whole game, unchanged) and a [small AnimatedSprite scene](https://dilukangelosl.github.io/opal/web/pixi/).
 It publishes to npm from GitHub Actions when you publish a release tagged `v<version>` (see `.github/workflows/publish.yml`).
 
 ## Rift Warden (showcase game)

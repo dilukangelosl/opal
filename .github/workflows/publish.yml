@@ -13,7 +13,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@v2
@@ -21,7 +21,7 @@ jobs:
         with: { tool: wasm-bindgen-cli@0.2.129 }
       - run: cargo test --workspace
       - run: ./build-web.sh
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22, registry-url: 'https://registry.npmjs.org' }
       - name: Check the tag matches the package version
         if: github.event_name == 'release'
