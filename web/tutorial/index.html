@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How Opal Dojo was made</title>
+<meta name="description" content="Building a browser game from AI-generated transparent video sprites: fal for generation, Opal for keying, packing and playback.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0e1222; --panel: #161b30; --line: #262d4a; --paper: #efe6d4; --muted: #a3a9c2;
+    --lantern: #ffb35c; --blood: #e0475b; --code: #0a0d19;
+    --opal: linear-gradient(115deg, #7ef0d0, #8fc8ff 38%, #b69cff 66%, #ffb38a);
+  }
+  * { box-sizing: border-box }
+  html { scroll-behavior: smooth }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } }
+  body { margin: 0; background: var(--night); color: var(--paper); font: 400 17px/1.7 "Zen Kaku Gothic New", system-ui, sans-serif }
+  a { color: var(--lantern); text-underline-offset: 3px }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--lantern); outline-offset: 3px }
+  h1, h2, h3 { font-family: "Shippori Mincho B1", serif; line-height: 1.15; margin: 0 }
+  h1 { font-size: clamp(38px, 6vw, 64px); font-weight: 800; letter-spacing: -0.01em }
+  h2 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800 }
+  h3 { font-size: 20px; font-weight: 600; margin-top: 28px }
+  p { margin: 14px 0 }
+  code { font: 14px/1.5 ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 2px 6px; border-radius: 4px }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 18px 0 }
+  pre code { background: none; padding: 0; font-size: 13.5px; line-height: 1.6; color: #d7dcef }
+  .c { color: #7d86a8 } .k { color: var(--lantern) } .ok { color: #7ee0b0 } .bad { color: var(--blood) }
+
+  .top { display: flex; align-items: center; gap: 18px; padding: 16px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--line) }
+  .top .mark { display: flex; align-items: center; gap: 10px; color: var(--paper); text-decoration: none; font-weight: 700 }
+  .top svg { width: 26px; height: 26px }
+  .top nav { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; font-size: 15px }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px }
+  .wide { max-width: 1120px; margin: 0 auto; padding: 0 16px }
+  header.hero { padding: 56px 0 20px }
+  .lede { font-size: 20px; color: var(--muted); max-width: 640px }
+  .trailer { margin: 28px auto 8px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #000; aspect-ratio: 16 / 9 }
+  .trailer video { width: 100%; height: 100%; display: block }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 28px 0 }
+  .facts div { background: var(--panel); padding: 16px 18px }
+  .facts b { display: block; font: 800 26px/1.1 "Shippori Mincho B1", serif; color: var(--lantern) }
+  .facts span { color: var(--muted); font-size: 14px }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 0 }
+  .btn { display: inline-block; padding: 10px 20px; border-radius: 999px; background: var(--lantern); color: #1b1206; font-weight: 700; text-decoration: none }
+  .btn.ghost { background: none; color: var(--paper); border: 1px solid var(--line) }
+
+  section.step { padding: 56px 0 8px; border-top: 1px solid var(--line); margin-top: 48px }
+  .num { font: 800 15px/1 "Shippori Mincho B1", serif; color: var(--lantern); margin-bottom: 10px; display: block }
+  figure { margin: 22px 0 }
+  figure img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line) }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
+  .verdict { font-weight: 700 }
+  .verdict.bad { color: var(--blood) } .verdict.ok { color: #7ee0b0 }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top }
+  th { color: var(--muted); font-weight: 500 }
+  td:last-child { font-variant-numeric: tabular-nums }
+  .note { border-left: 3px solid var(--lantern); background: var(--panel); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 20px 0; color: #e3dccd }
+  footer { border-top: 1px solid var(--line); margin-top: 72px; padding: 32px 0 48px; color: var(--muted); font-size: 15px }
+  @media (max-width: 680px) { .pair { grid-template-columns: 1fr } body { font-size: 16px } .top nav { display: none } }
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="mark" href="../../"><svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="op" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7EF0D0"/><stop offset=".38" stop-color="#8FC8FF"/><stop offset=".66" stop-color="#B69CFF"/><stop offset="1" stop-color="#FFB38A"/></linearGradient></defs><path fill="url(#op)" fill-rule="evenodd" d="M132,28.08A100,100 0 1 0 132,227.92ZM132,68h24v24h-24ZM132,116h24v24h-24ZM132,164h24v24h-24ZM156,44h24v24h-24ZM156,92h24v24h-24ZM156,140h24v24h-24ZM156,188h24v24h-24ZM204,92h24v24h-24Z"/></svg>Opal</a>
+  <nav><a href="#plan">Plan</a><a href="#stills">Stills</a><a href="#clips">Clips</a><a href="#vfx">Effects</a><a href="#qa">QA</a><a href="#encode">Encode</a><a href="#code">Code</a></nav>
+</div>
+
+<header class="hero wrap">
+  <h1>How Opal Dojo was made</h1>
+  <p class="lede">A browser game where every character and effect is an AI-generated video with a transparent background. This page walks through the whole build, mistakes included.</p>
+  <div class="cta"><a class="btn" href="../game/">Play the game</a><a class="btn ghost" href="https://github.com/dilukangelosl/opal">Source on GitHub</a></div>
+</header>
+
+<div class="wide">
+  <div class="trailer"><video controls playsinline preload="metadata" poster="img/poster.jpg" src="../../docs/media/opal-dojo-trailer.mp4"></video></div>
+</div>
+
+<div class="wrap">
+  <div class="facts">
+    <div><b>8</b><span>AI generations used (3 stills, 5 clips)</span></div>
+    <div><b>~$0.85</b><span>total fal cost, retries included</span></div>
+    <div><b>0.9 MB</b><span>all sprites together, as .opal</span></div>
+    <div><b>304</b><span>video sprites at 120 fps in Chrome</span></div>
+  </div>
+
+  <section class="step" id="plan">
+    <span class="num">Step 1</span>
+    <h2>Plan around how the runtime works</h2>
+    <p><a href="https://github.com/dilukangelosl/opal">Opal</a> turns a transparent video into a small <code>.opal</code> file. At load time it decodes the file once with the browser's hardware video decoder and keeps the frames on the GPU. After that, each sprite is just a textured quad. A thousand enemies cost roughly the same as one, so the game is designed around a horde.</p>
+    <p>The asset list: a ninja hero (idle, run, attack), an oni imp (walk), a smoke burst for kills, and a background painting. Every animation is a short video, cut into seamless loops.</p>
+  </section>
+
+  <section class="step" id="stills">
+    <span class="num">Step 2</span>
+    <h2>Generate the stills on pure green</h2>
+    <p>Each character starts as one image from <code>fal-ai/nano-banana-2</code>. The prompt decides most of the final quality, so it's strict: exact side view facing right, character at about 55% of the frame height with wide margins, and a perfectly flat <code>#00FF00</code> background with no green on the character.</p>
+<pre><code>2D side-scrolling action game character sprite, full body, seen from the exact side facing right.
+A young ninja hero in a black gi with a crimson scarf and crimson sash, gold trim, holding a katana low…
+The character is centered and occupies about 55% of the image height, with wide empty margins on all
+sides (especially in front for the sword swing). The entire background is one perfectly flat, uniform
+pure green chroma-key fill (#00FF00) with no gradient, no shadow, no ground line. <span class="k">No green anywhere on the character.</span></code></pre>
+    <figure><img src="img/stills.jpg" alt="The ninja hero and the red oni imp, each standing on a flat green background" loading="lazy"><figcaption>Both stills face right. The game mirrors them with a negative scale when they turn around.</figcaption></figure>
+    <p>The background is the same model at 16:9, with a clear, empty stone floor in the bottom fifth for characters to stand on.</p>
+  </section>
+
+  <section class="step" id="clips">
+    <span class="num">Step 3</span>
+    <h2>Animate with pinned loops</h2>
+    <p>Each still goes into <code>minimax/h3-max/image-to-video</code> (about $0.03 a second). The key trick, borrowed from <a href="https://github.com/aldegad/sprite-gen">sprite-gen</a>: <b>pass the same still as both the first frame and the last frame.</b> The model has to come back to the starting pose, so the clip loops without a visible jump.</p>
+<pre><code>{
+  <span class="k">"image_url":     "hero.png",</span>
+  <span class="k">"end_image_url": "hero.png",</span>            <span class="c">// pinned: the clip closes on itself</span>
+  "duration": 2, "resolution": "768P", "prompt_expansion_mode": "disabled",
+  "prompt": "The ninja runs fast in place, as if on a treadmill, without moving across the screen …
+             Camera completely locked … background stays a perfectly flat, pure green chroma-key fill …
+             The last frame returns to the exact pose of the first frame, so the animation loops seamlessly."
+}</code></pre>
+    <p>"In place, as if on a treadmill" and "camera completely locked" matter: without them the character drifts across the frame and you can't cut a loop.</p>
+    <figure><img src="img/clip-run.jpg" alt="Eight frames of the ninja sprinting in place" loading="lazy"><figcaption>Run, sampled every 0.25 s</figcaption></figure>
+    <figure><img src="img/clip-attack.jpg" alt="Eight frames of the ninja's katana slash with a white arc trail" loading="lazy"><figcaption>Attack: the model added a white arc trail, which works as a free built-in effect</figcaption></figure>
+    <figure><img src="img/clip-walk.jpg" alt="Eight frames of the imp stomping in place" loading="lazy"><figcaption>Imp walk</figcaption></figure>
+  </section>
+
+  <section class="step" id="vfx">
+    <span class="num">Step 4</span>
+    <h2>Effects: the smoke that didn't fit</h2>
+    <p>The first smoke was generated from text alone. It came back 16:9 and filled the frame, so the cloud was <b>cut off by the edges of the video</b>. In the game that shows up as hard, straight edges on something that should be round.</p>
+    <figure><img src="img/smoke-before.jpg" alt="First smoke attempt: a burst that fills the whole frame and runs off every edge" loading="lazy"><figcaption><span class="verdict bad">Rejected:</span> content touches the border in 48 of 56 frames</figcaption></figure>
+    <p>The fix uses the same pinning trick with a different image: an <b>empty square green frame</b> as both the first and last frame. That forces a square canvas and an effect that starts and ends empty. The prompt asks for a small, centred puff with no sparks or flying pieces.</p>
+    <figure><img src="img/smoke-raw.jpg" alt="Second attempt: a small streak drops in from the top, bursts, and becomes a round puff that breaks up" loading="lazy"><figcaption>Better, but across four tries the model still added an intro (something dropping in from the top, plus sparks) that touches the edge</figcaption></figure>
+    <p>Rather than keep paying for rerolls, the clip is cut where the automatic check (next step) says nothing touches the border. It starts on the full puff, and the game code does the pop-in (scale up over the first 10%).</p>
+    <figure><img src="img/smoke-after.jpg" alt="Final smoke: a round puff that breaks into smaller puffs and fades, always inside the frame" loading="lazy"><figcaption><span class="verdict ok">Used:</span> trimmed from 0.75 s, clean on every frame, half the size of the first attempt</figcaption></figure>
+  </section>
+
+  <section class="step" id="qa">
+    <span class="num">Step 5</span>
+    <h2>Check every clip before using it</h2>
+    <p><code>tools/sprite_qa.py</code> catches the two problems you can't easily see in a still preview: content cut off at the frame edge, and loops that jump.</p>
+<pre><code><span class="c">$</span> python3 tools/sprite_qa.py edges game/src/smoke.mp4
+game/src/smoke.mp4: backdrop #00b400, 56 frames
+  <span class="bad">FAIL: content touches the border in 48 frames (first 0, worst 30: 81.8% of the edge)</span>
+
+<span class="c">$</span> python3 tools/sprite_qa.py edges game/src/smoke_d_trim.mp4
+game/src/smoke_d_trim.mp4: backdrop #00ec01, 38 frames
+  <span class="ok">ok: nothing touches the border</span>
+
+<span class="c">$</span> python3 tools/sprite_qa.py loop game/src/imp_walk.mp4 --fps 12
+  whole clip seam cost 0.68  -> use @0-26 (drop the duplicated last frame)
+  best internal loop cost 1.45 -> @6-17 (12 frames)
+  pick: whole clip</code></pre>
+    <p>Pinning paid off: in every character clip the first and last frames already matched better than any loop found inside the clip, so each clip is used whole.</p>
+  </section>
+
+  <section class="step" id="encode">
+    <span class="num">Step 6</span>
+    <h2>Key, shrink and pack with the opal CLI</h2>
+    <p>One command per character. <code>--key auto</code> finds the green from the frame border and removes it. For soft pixels (the sword trail, the smoke) it also works out how much of each pixel was backdrop and strips the green tint. <code>--fps 12 --scale 0.5</code> brings 768p, 24 fps footage down to game size, which matters most for GPU memory.</p>
+<pre><code>opal encode -o hero.opal --crf 24 --fps 12 --scale 0.5 --once attack \
+  hero_idle.mp4   --key auto --rect idle=0,0,768,768@0-35 \
+  hero_run.mp4    --key auto --rect run=0,0,768,768@0-26 \
+  hero_attack.mp4 --key auto --rect attack=0,0,768,768@0-26</code></pre>
+    <table>
+      <thead><tr><th>File</th><th>Clips</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>hero.opal</td><td>idle 36f · run 27f · attack 27f</td><td>658 KB</td></tr>
+        <tr><td>imp.opal</td><td>walk 27f</td><td>89 KB</td></tr>
+        <tr><td>smoke.opal</td><td>burst 19f</td><td>149 KB</td></tr>
+      </tbody>
+    </table>
+    <p>The encoder crops each clip to its visible area, packs the clips into one atlas, and stores the transparency as a grey image under the colour. It's plain H.264, so every browser can hardware-decode it.</p>
+    <div class="note">If you'd rather click than type, <a href="../studio/">Opal Studio</a> does the same in the browser: drag to crop, pick key colours, set the frame range, preview against a screenshot of your game, and export.</div>
+  </section>
+
+  <section class="step" id="check">
+    <span class="num">Step 7</span>
+    <h2>Look at the result</h2>
+    <p>Drop any <code>.opal</code> onto the <a href="../player.html">player</a> and it plays every clip through the real runtime. Use its light background to spot green fringes.</p>
+    <figure><img src="img/player.jpg" alt="The hero's idle, run and attack clips playing side by side with clean transparent edges" loading="lazy"><figcaption>hero.opal in the player: idle, run, attack</figcaption></figure>
+  </section>
+
+  <section class="step" id="code">
+    <span class="num">Step 8</span>
+    <h2>The game code</h2>
+    <p>The runtime is about 15 KB (Rust compiled to WebAssembly, plus a little JS). These are the calls the game needs:</p>
+<pre><code>import { createOpal } from './opal.js';
+const opal = await createOpal(canvas);
+const hero = await opal.load('hero.opal', { scale: mobile ? 0.6 : 1 });   <span class="c">// phones: ~1/3 of the GPU memory</span>
+
+<span class="c">// stand on the ground: each clip knows its visible box inside the video frame</span>
+const [bx, by, bw, bh] = hero.clips.idle.box;
+const k = 205 / bh;                                         <span class="c">// on-screen height in px</span>
+
+const id = opal.spawn(hero, 'idle', x, y, k);
+opal.set(id, x, y, k * facing);                             <span class="c">// facing = -1 mirrors the sprite</span>
+opal.play(hero, id, 'attack');
+opal.speed(id, 3.2);                                        <span class="c">// the generated slash is 2 s; play it in 0.7 s</span>
+if (opal.progress(id) &gt; 0.06 &amp;&amp; opal.progress(id) &lt; 0.34) hitTest();   <span class="c">// the blade's sweep</span>
+
+opal.render(dt);                                            <span class="c">// one draw call per file</span></code></pre>
+    <p>The rest is a normal small game: imps walk toward you from both sides, a slash kills everything in reach and leaves smoke, combos multiply the score, and every wave spawns faster.</p>
+    <div class="pair">
+      <figure><img src="img/game-kill.jpg" alt="The ninja mid-slash with a smoke puff where an imp was" loading="lazy"><figcaption>A kill: the smoke is its own video sprite</figcaption></figure>
+      <figure><img src="img/game-horde.jpg" alt="Hundreds of imps closing in on the ninja from both sides" loading="lazy"><figcaption>Stress test: 304 video sprites at 120 fps</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="step" id="repeat">
+    <span class="num">Step 9</span>
+    <h2>Do it again with Claude Code</h2>
+    <p>The whole process, with every lesson from this build, is written up as a Claude Code skill: <a href="https://github.com/dilukangelosl/opal/blob/main/.claude/skills/opal-video-sprites/SKILL.md"><code>.claude/skills/opal-video-sprites</code></a>. It covers the prompt templates, pinned loops, the empty-frame method for effects, QA, encoding and the runtime calls. Open the repo in Claude Code and ask for a new character or effect.</p>
+  </section>
+
+  <footer>
+    Built with <a href="https://github.com/dilukangelosl/opal">Opal</a> · art and animation generated with <a href="https://fal.ai">fal</a> (Nano Banana 2, MiniMax H3 Max) · loop method from <a href="https://github.com/aldegad/sprite-gen">sprite-gen</a>.
+    <br><a href="../game/">Play Opal Dojo</a> · <a href="../studio/">Opal Studio</a> · <a href="../player.html">Player</a>
+  </footer>
+</div>
+</body>
+</html>

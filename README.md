@@ -7,6 +7,8 @@
 
 <p align="center">Transparent video sprites for web games.</p>
 
+<p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/opal/web/game/">Play Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
+
 Use transparent videos as game sprites. You prepare clips in **Opal Studio** (in the
 browser) or with the `opal` CLI, both producing a small `.opal` file. A ~15 KB runtime
 (Rust/wasm + WebCodecs + WebGL2) then plays thousands of them per frame.

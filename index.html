@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opal</title>
+<meta name="description" content="Transparent video sprites for web games: a Rust encoder, an in-browser studio and a ~15 KB runtime.">
+<link rel="icon" href="web/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #141b26; --panel: #1b2433; --line: #2f3c52; --text: #e8edf4; --muted: #8e9bb0;
+          --opal: linear-gradient(115deg, #7ef0d0, #8fc8ff 38%, #b69cff 66%, #ffb38a) }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--ink); color: var(--text); font: 400 17px/1.6 "Instrument Sans", system-ui, sans-serif }
+  a { color: inherit }
+  a:focus-visible { outline: 2px solid #8fc8ff; outline-offset: 3px }
+  main { max-width: 980px; margin: 0 auto; padding: 56px 16px 64px }
+  .logo { width: min(420px, 80vw); height: auto; display: block }
+  .lede { font-size: 21px; color: var(--muted); max-width: 620px; margin: 22px 0 36px }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px }
+  .card { display: block; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; transition: border-color .15s }
+  .card:hover { border-color: #8fc8ff }
+  .card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-bottom: 1px solid var(--line) }
+  .card div { padding: 14px 16px 16px }
+  .card b { font-size: 18px }
+  .card p { margin: 4px 0 0; color: var(--muted); font-size: 15px }
+  .card.lead { grid-column: 1 / -1 }
+  .card.lead img { aspect-ratio: 21 / 9 }
+  .card.lead b { font-size: 24px; background: var(--opal); -webkit-background-clip: text; background-clip: text; color: transparent }
+  ul { color: var(--muted); padding-left: 20px; margin: 36px 0 0 }
+  footer { margin-top: 40px; color: var(--muted); font-size: 15px }
+</style>
+</head>
+<body>
+<main>
+  <picture>
+    <img class="logo" src="brand/logo/opal-lockup-color-dark.svg" alt="Opal">
+  </picture>
+  <p class="lede">Transparent video sprites for web games. Turn green-screen or alpha video into tiny <code>.opal</code> files, and play thousands of them at once with a ~15 KB runtime.</p>
+  <div class="grid">
+    <a class="card lead" href="web/game/"><img src="web/tutorial/img/game-kill.jpg" alt="Opal Dojo: a ninja slashing an imp into a puff of smoke"><div><b>Play Opal Dojo</b><p>A small brawler where every character and effect is an AI-generated video sprite.</p></div></a>
+    <a class="card" href="web/tutorial/"><img src="web/tutorial/img/clip-attack.jpg" alt="Frames of the ninja's slash animation"><div><b>How the game was made</b><p>Step by step: fal generation, pinned loops, QA, encoding, code.</p></div></a>
+    <a class="card" href="web/studio/"><img src="web/tutorial/img/player.jpg" alt="Keyed hero animations"><div><b>Opal Studio</b><p>Crop, key, preview and export .opal in the browser.</p></div></a>
+    <a class="card" href="docs/media/opal-dojo-trailer.mp4"><img src="web/tutorial/img/poster.jpg" alt="Trailer still: the horde closing in"><div><b>Trailer</b><p>35 seconds of gameplay, recorded from the game.</p></div></a>
+  </div>
+  <ul>
+    <li><a href="web/player.html">Player</a>: drop in any .opal file to play it</li>
+    <li><a href="web/compare.html">Benchmark</a>: Opal against &lt;video&gt; elements</li>
+    <li><a href="web/keying.html">Keying preview</a>: green, magenta and two-tone backdrops</li>
+  </ul>
+  <footer>Runs in Chrome, Edge, Firefox desktop and Safari 26+ (needs WebCodecs). <a href="https://github.com/dilukangelosl/opal">Source on GitHub</a></footer>
+</main>
+</body>
+</html>

@@ -205,4 +205,4 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 $('start').focus();
-window.__game = { spawn: (n) => { for (let i = 0; i < n; i++) spawnImp(); }, get state() { return state; }, get imps() { return imps?.length ?? 0; }, get score() { return score; }, get hero() { return hero; }, start, keys };
+window.__game = { spawn: (n) => { for (let i = 0; i < n; i++) spawnImp(); }, get state() { return state; }, get imps() { return imps?.length ?? 0; }, get impList() { return imps ?? []; }, get score() { return score; }, get hero() { return hero; }, start, keys };
