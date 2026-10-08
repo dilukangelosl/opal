@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Opal vs video</title>
+<style>
+  :root { --bg: #161b26; --panel: #000b; --fg: #eef; --accent: #7cf; --muted: #9ab }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui; overflow: hidden }
+  #stage, canvas { position: fixed; inset: 0; width: 100vw; height: 100vh }
+  body { background: repeating-conic-gradient(#202838 0 25%, #161b26 0 50%) 0 0/40px 40px }
+  #stage video { position: absolute; left: 0; top: 0; width: 256px; height: 256px; will-change: transform; pointer-events: none }
+  #hud { position: fixed; top: 8px; left: 8px; right: 8px; max-width: 460px; background: var(--panel); padding: 10px 12px; border-radius: 8px; z-index: 2 }
+  #hud .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px }
+  button, select { font: inherit; color: var(--fg); background: #2a3348; border: 1px solid #3a4560; border-radius: 6px; padding: 6px 10px; min-height: 36px }
+  button[aria-pressed=true] { background: var(--accent); color: #012; border-color: var(--accent) }
+  #stats { white-space: pre; font: 12px/1.45 ui-monospace, monospace; color: var(--muted) }
+  #stats b { color: var(--fg) }
+</style>
+<div id="stage"></div>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="row">
+    <button data-mode="opal">Opal</button>
+    <button data-mode="video">&lt;video&gt; WebM</button>
+    <select id="n"></select>
+    <button id="half" title="Store frames at half resolution: 1/4 GPU memory">mobile ½ res</button>
+  </div>
+  <div id="stats">loading…</div>
+</div>
+<script type="module">
+  import { createOpal } from './opal.js';
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') ?? 'opal', N = +(q.get('n') ?? 500), half = q.get('half') === '1';
+  const CLIPS = ['idle', 'walk', 'run', 'jump', 'die'];
+  const go = (k, v) => { q.set(k, v); location.search = q; };
+
+  for (const b of document.querySelectorAll('[data-mode]')) {
+    b.setAttribute('aria-pressed', b.dataset.mode === mode);
+    b.onclick = () => go('mode', b.dataset.mode);
+  }
+  const sel = document.getElementById('n');
+  for (const v of [50, 200, 500, 1000, 2000, 5000, 20000]) sel.add(new Option(`${v} sprites`, v, false, v === N));
+  sel.onchange = () => go('n', sel.value);
+  const halfBtn = document.getElementById('half');
+  halfBtn.setAttribute('aria-pressed', half);
+  halfBtn.hidden = mode !== 'opal';
+  halfBtn.onclick = () => go('half', half ? '0' : '1');
+
+  const dpr = Math.min(devicePixelRatio, 2); // ponytail: cap DPR, 3x phones burn fill-rate for no visible gain
+  const W = innerWidth, H = innerHeight;
+  const stats = document.getElementById('stats');
+  const sprites = Array.from({ length: N }, (_, i) => ({
+    x: Math.random() * W, y: Math.random() * H, k: 0.3 + Math.random() * 0.5,
+    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200, clip: CLIPS[i % CLIPS.length],
+  }));
+  const step = (dt) => {
+    for (const s of sprites) {
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      if (s.x < 0 || s.x > W) s.vx = -s.vx;
+      if (s.y < 0 || s.y > H) s.vy = -s.vy;
+    }
+  };
+
+  let draw, info;
+  const t0 = performance.now();
+  try {
+    if (mode === 'opal') {
+      const canvas = document.getElementById('c');
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      const opal = await createOpal(canvas);
+      const hero = await opal.load('../examples/hero.opal', { scale: half ? 0.5 : 1 });
+      for (const s of sprites) s.id = opal.spawn(hero, s.clip, s.x * dpr, s.y * dpr, s.k * dpr);
+      draw = (dt) => {
+        step(dt);
+        for (const s of sprites) {
+          opal.set(s.id, s.x * dpr, s.y * dpr, s.k * dpr);
+          if (opal.done(s.id)) opal.play(hero, s.id, 'die'); // replay one-shot clip
+        }
+        opal.render(dt);
+      };
+      info = `file ${(hero.bytes / 1024).toFixed(0)} KB · atlas ${hero.atlas.join('x')} → layer ${hero.layer.join('x')} × ${hero.frames}\n` +
+             `GPU cache ${(hero.vram / 1e6).toFixed(1)} MB · decoders running: 0`;
+    } else {
+      document.getElementById('c').remove();
+      const stage = document.getElementById('stage');
+      const els = sprites.map((s) => {
+        const v = Object.assign(document.createElement('video'), { src: `../examples/cells/${s.clip}.webm`, muted: true, loop: true, autoplay: true, playsInline: true });
+        stage.appendChild(v);
+        return v;
+      });
+      await Promise.race([Promise.all(els.map((v) => new Promise((r) => (v.onplaying = r)))), new Promise((r) => setTimeout(r, 15000))]);
+      draw = (dt) => {
+        step(dt);
+        for (let i = 0; i < N; i++) {
+          const s = sprites[i];
+          els[i].style.transform = `translate(${s.x - 128}px,${s.y - 128}px) scale(${s.k})`;
+        }
+      };
+      const playing = els.filter((v) => !v.paused && v.readyState >= 3).length;
+      info = `files 5 × WebM (VP9 alpha, 225 KB total) · 256x256 each\ndecoders running: ${N} (${playing} playing)`;
+    }
+  } catch (e) {
+    stats.textContent = 'error: ' + e.message;
+    window.__stats = { error: e.message };
+    throw e;
+  }
+  const loadMs = performance.now() - t0;
+
+  let last = performance.now(), acc = 0, frames = 0, worst = 0, samples = [];
+  (function loop(now) {
+    const dt = Math.min((now - last) / 1000, 0.1); last = now;
+    const c0 = performance.now();
+    draw(dt);
+    const cpu = performance.now() - c0;
+    frames++; acc += dt; worst = Math.max(worst, dt);
+    if (acc >= 1) {
+      const fps = frames / acc;
+      samples.push(fps);
+      const heap = performance.memory ? ` · JS heap ${(performance.memory.usedJSHeapSize / 1e6).toFixed(0)} MB` : '';
+      stats.innerHTML = `<b>${mode === 'opal' ? 'Opal' : '<video>'} · ${N} sprites · ${fps.toFixed(0)} fps</b> (worst frame ${(worst * 1000).toFixed(0)} ms)\n` +
+        `script per frame ${cpu.toFixed(2)} ms · ready in ${loadMs.toFixed(0)} ms${heap}\n${info}`;
+      window.__stats = { mode, n: N, half, fps: Math.round(fps), worstMs: Math.round(worst * 1000), cpuMs: +cpu.toFixed(2), loadMs: Math.round(loadMs), samples };
+      frames = 0; acc = 0; worst = 0;
+    }
+    requestAnimationFrame(loop);
+  })(last);
+</script>

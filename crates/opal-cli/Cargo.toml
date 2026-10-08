@@ -1,0 +1,12 @@
+[package]
+name = "opal-cli"
+edition.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "opal"
+path = "src/main.rs"
+
+[dependencies]
+opal-format = { path = "../opal-format" }
+opal-encode = { path = "../opal-encode" }

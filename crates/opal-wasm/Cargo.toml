@@ -1,0 +1,10 @@
+[package]
+name = "opal-wasm"
+edition.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+opal-format = { path = "../opal-format" }

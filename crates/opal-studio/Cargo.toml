@@ -1,0 +1,12 @@
+[package]
+name = "opal-studio"
+edition.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+opal-encode = { path = "../opal-encode" }
+opal-format = { path = "../opal-format" }
+wasm-bindgen = "=0.2.129"

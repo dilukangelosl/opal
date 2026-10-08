@@ -1,0 +1,142 @@
+:root {
+  --ink: #141b26;      /* app base: lightbox navy, lets media and checker read */
+  --panel: #1b2433;
+  --raise: #243044;
+  --line: #2f3c52;
+  --text: #e8edf4;
+  --muted: #8e9bb0;
+  --danger: #ff7a85;
+  --opal: linear-gradient(115deg, #7ef0d0 0%, #8fc8ff 35%, #b69cff 62%, #ffb38a 100%);
+  --chk-a: #2a3446;
+  --chk-b: #222b3a;
+  --r: 8px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { height: 100% }
+body {
+  margin: 0; background: var(--ink); color: var(--text);
+  font: 400 13px/1.45 "Instrument Sans", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+h2 { font-size: 13px; font-weight: 650; margin: 0 }
+button, input, select { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid #8fc8ff; outline-offset: 2px }
+[hidden] { display: none !important }
+
+/* header */
+.bar { height: 52px; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid var(--line) }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 650; letter-spacing: -0.01em }
+.brand svg { width: 26px; height: 26px }
+.hint { color: var(--muted); margin: 0; flex: 1 }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; min-height: 32px; text-decoration: none; position: relative }
+.btn:hover { border-color: #46566f }
+.btn.small { padding: 4px 10px; min-height: 28px }
+.btn.icon { width: 32px; justify-content: center; padding: 0 }
+.btn.danger { color: var(--danger) }
+.btn.accent { border-color: #8fc8ff; color: #cfe6ff }
+.btn:disabled { opacity: .45; cursor: default }
+.btn input[type=color] { position: absolute; inset: 0; opacity: 0; cursor: pointer }
+.export { border: 0; border-radius: 999px; padding: 8px 18px; font-weight: 650; color: #10202a; background: var(--opal); cursor: pointer; min-height: 36px }
+.export:disabled { filter: grayscale(1) brightness(.6); cursor: default }
+.export.wide { width: 100%; margin-top: 4px }
+
+/* layout */
+.app { display: grid; grid-template-columns: 240px minmax(0, 1fr) 300px; height: calc(100% - 52px); overflow: hidden }
+.side, .inspect { overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 22px }
+.side { border-right: 1px solid var(--line) }
+.inspect { border-left: 1px solid var(--line) }
+.inspect section { display: flex; flex-direction: column; gap: 10px }
+.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px }
+.stage { display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(220px, 42%); min-width: 0; min-height: 0; overflow: hidden }
+
+/* lists */
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px }
+.list li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer }
+.list li:hover { background: var(--panel) }
+.list li[aria-selected=true] { background: var(--raise) }
+.list .meta { color: var(--muted); margin-left: auto; font-size: 12px; white-space: nowrap }
+.list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex: none }
+.list .empty-note { color: var(--muted); cursor: default; padding: 4px 8px }
+.list .empty-note:hover { background: none }
+
+/* checkerboard = transparency */
+.checker { background: repeating-conic-gradient(var(--chk-a) 0 25%, var(--chk-b) 0 50%) 0 0 / 16px 16px }
+
+/* viewer */
+.viewer { position: relative; display: grid; place-items: center; padding: 16px; min-height: 0; overflow: hidden }
+/* sized by JS to fit its panel at the media's aspect ratio; children fill it exactly */
+.fitbox { position: relative }
+.fitbox > * { position: absolute; inset: 0; width: 100%; height: 100% }
+#viewer { background: repeating-conic-gradient(var(--chk-a) 0 25%, var(--chk-b) 0 50%) 0 0 / 16px 16px }
+#overlay { touch-action: none; cursor: crosshair }
+#overlay .clip rect.box { fill-opacity: .08; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: move }
+#overlay .clip.sel rect.box { fill-opacity: .14; stroke-width: 3 }
+#overlay .handle { cursor: nwse-resize }
+#overlay text { font: 600 13px "Instrument Sans", system-ui; paint-order: stroke; stroke: #141b26; stroke-width: 3px; pointer-events: none }
+.picking #overlay { cursor: copy }
+.empty { text-align: center; color: var(--muted); max-width: 360px }
+.empty .big { color: var(--text); font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em }
+
+/* timeline */
+.timeline { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.fnum { min-width: 120px }
+.eyedrop { color: #cfe6ff }
+.scrub { position: relative; padding-top: 14px }
+.ranges { position: absolute; inset: 0 8px auto 8px; height: 12px }
+.ranges span { position: absolute; top: 0; height: 6px; border-radius: 3px; opacity: .85 }
+.ranges span.sel { height: 10px; top: -2px }
+#scrub { width: 100%; accent-color: #b69cff }
+.check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer }
+
+/* preview */
+.preview { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden }
+.pvstage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden }
+#pv { touch-action: none }
+#pv { background: repeating-conic-gradient(var(--chk-a) 0 25%, var(--chk-b) 0 50%) 0 0 / 16px 16px; cursor: grab }
+#pvGl { pointer-events: none }
+.readout { color: var(--muted) }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden }
+.seg button { background: transparent; border: 0; padding: 5px 10px; cursor: pointer; min-height: 28px }
+.seg button + button { border-left: 1px solid var(--line) }
+.seg button[aria-pressed=true] { background: var(--raise); color: #fff }
+.seg button:disabled { opacity: .45; cursor: default }
+.inspect .seg { display: flex }
+.inspect .seg button { flex: 1 }
+
+/* fields */
+.field { display: flex; flex-direction: column; gap: 4px; color: var(--muted) }
+.field input, .field select { background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: var(--text); min-width: 0; width: 100% }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; color: var(--muted) }
+.slider input { grid-column: 1 / -1; accent-color: #8fc8ff; width: 100% }
+.slider output { grid-row: 1; grid-column: 2; color: var(--text) }
+.preview .slider { display: flex; align-items: center; gap: 8px; min-width: 240px }
+.note { color: var(--muted); margin: 0; font-size: 12px }
+.status { margin: 0; min-height: 1.4em }
+.status.err { color: var(--danger) }
+details { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px }
+details[open] { display: flex }
+summary { cursor: pointer; color: var(--text) }
+details > * + * { margin-top: 8px }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px }
+.swatch { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 3px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px }
+.swatch i { width: 18px; height: 18px; border-radius: 4px; display: block; box-shadow: inset 0 0 0 1px #fff3 }
+.swatch button { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px }
+
+.dropzone { position: fixed; inset: 0; background: #141b26cc; display: grid; place-items: center; z-index: 10; border: 2px dashed #8fc8ff; margin: 8px; border-radius: 12px }
+.dropzone p { font-size: 22px; font-weight: 600 }
+
+@media (max-width: 1000px) {
+  .app { grid-template-columns: 1fr; height: auto; overflow: visible }
+  .side, .inspect { border: 0; border-bottom: 1px solid var(--line) }
+  .stage { grid-template-rows: auto auto auto; overflow: visible }
+  .viewer { min-height: 280px }
+  .pvstage { min-height: 260px }
+  .hint { display: none }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto } }

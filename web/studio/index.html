@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opal Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.ico" sizes="any">
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="op" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7EF0D0"/><stop offset=".38" stop-color="#8FC8FF"/><stop offset=".66" stop-color="#B69CFF"/><stop offset="1" stop-color="#FFB38A"/></linearGradient></defs><path fill="url(#op)" fill-rule="evenodd" d="M132,28.08A100,100 0 1 0 132,227.92ZM132,68h24v24h-24ZM132,116h24v24h-24ZM132,164h24v24h-24ZM156,44h24v24h-24ZM156,92h24v24h-24ZM156,140h24v24h-24ZM156,188h24v24h-24ZM204,92h24v24h-24Z"/></svg>
+    <span>Opal Studio</span>
+  </div>
+  <p class="hint" id="hint">Drop videos anywhere to add them.</p>
+  <button class="export" id="exportTop" disabled>Export .opal</button>
+</header>
+
+<main class="app">
+  <aside class="side">
+    <section>
+      <div class="head"><h2>Videos</h2><label class="btn small" for="fileIn">Add</label></div>
+      <input type="file" id="fileIn" accept="video/*" multiple hidden>
+      <ul id="sources" class="list"></ul>
+    </section>
+    <section>
+      <div class="head"><h2>Clips</h2><button class="btn small" id="addClip" disabled>New clip</button></div>
+      <ul id="clips" class="list"></ul>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="viewer" id="viewerWrap">
+      <div class="empty" id="empty">
+        <p class="big">Drop a video to start</p>
+        <p>MP4, WebM or MOV. Green screen footage or transparent WebM both work.</p>
+        <label class="btn" for="fileIn">Choose a video</label>
+      </div>
+      <div class="fitbox" id="frameBox" hidden>
+        <canvas id="viewer"></canvas>
+        <svg id="overlay"></svg>
+      </div>
+    </div>
+    <div class="timeline" id="timeline" hidden>
+      <div class="row">
+        <button class="btn icon" id="play" aria-label="Play">▶</button>
+        <span class="fnum" id="fnum">Frame 0</span>
+        <button class="btn small" id="setIn" title="Set the selected clip's first frame (I)">Set in</button>
+        <button class="btn small" id="setOut" title="Set the selected clip's last frame (O)">Set out</button>
+        <label class="check"><input type="checkbox" id="showKey" checked> Show keyed</label>
+        <span class="eyedrop" id="eyeHint" hidden>Click the video to pick a key color · Esc to cancel</span>
+      </div>
+      <div class="scrub">
+        <div class="ranges" id="ranges"></div>
+        <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Frame">
+      </div>
+    </div>
+    <div class="preview">
+      <div class="row">
+        <h2>Preview</h2>
+        <select id="pvClip" aria-label="Clip to preview"></select>
+        <div class="seg" role="group" aria-label="Preview source">
+          <button id="pvSrc" aria-pressed="true">Clip frames</button>
+          <button id="pvRun" aria-pressed="false" disabled title="Export once to see the real runtime">Exported .opal</button>
+        </div>
+        <label class="btn small" for="refIn">Reference…</label>
+        <input type="file" id="refIn" accept="image/*,video/*" hidden>
+        <button class="btn small" id="refClear" hidden>Remove reference</button>
+        <button class="btn small accent" id="pvUpdate">Update preview</button>
+      </div>
+      <div class="pvstage" id="pvStage">
+        <div class="fitbox" id="pvBox"><canvas id="pv"></canvas><canvas id="pvGl"></canvas></div>
+      </div>
+      <div class="row">
+        <label class="slider">Size <input type="range" id="pvScale" min="0.05" max="2" step="0.01" value="1"></label>
+        <span class="readout" id="pvReadout"></span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="inspect">
+    <section id="clipPanel" hidden>
+      <h2>Clip</h2>
+      <label class="field">Name <input id="cName" maxlength="60"></label>
+      <div class="grid4">
+        <label class="field">X <input type="number" id="cX" min="0"></label>
+        <label class="field">Y <input type="number" id="cY" min="0"></label>
+        <label class="field">Width <input type="number" id="cW" min="1"></label>
+        <label class="field">Height <input type="number" id="cH" min="1"></label>
+        <label class="field">First frame <input type="number" id="cIn" min="0"></label>
+        <label class="field">Last frame <input type="number" id="cOut" min="0"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="cLoop"> Loop</label>
+      <button class="btn small danger" id="cDel">Delete clip</button>
+      <details>
+        <summary>Split into a grid</summary>
+        <p class="note">For sprite sheets: one clip per cell of this video, using the frame range above.</p>
+        <div class="grid4">
+          <label class="field">Columns <input type="number" id="gCols" min="1" value="3"></label>
+          <label class="field">Rows <input type="number" id="gRows" min="1" value="2"></label>
+        </div>
+        <label class="field">Cell names, left to right <input id="gNames" placeholder="idle, walk, , jump"></label>
+        <p class="note">Leave a name empty to skip that cell.</p>
+        <button class="btn small" id="gMake">Create grid clips</button>
+      </details>
+    </section>
+
+    <section id="keyPanel" hidden>
+      <h2>Background removal</h2>
+      <div class="seg" role="group" aria-label="Chroma key mode">
+        <button data-mode="off">None</button>
+        <button data-mode="auto">Detect</button>
+        <button data-mode="custom">Pick colors</button>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <p class="note" id="keyMsg"></p>
+      <div id="customTools" class="row" hidden>
+        <button class="btn small" id="eyedrop">Pick from video</button>
+        <label class="btn small">Add hex… <input type="color" id="colorIn" value="#00b140"></label>
+      </div>
+      <div id="keySliders">
+        <label class="slider">Tolerance <input type="range" id="kTol" min="0" max="100" value="30"><output></output></label>
+        <label class="slider">Edge softness <input type="range" id="kSoft" min="1" max="60" value="20"><output></output></label>
+        <label class="slider">Spill removal <input type="range" id="kDespill" min="0" max="1" step="0.05" value="1"><output></output></label>
+        <label class="slider">Remove specks under <input type="range" id="kSpeck" min="0" max="200" value="16"><output></output></label>
+      </div>
+    </section>
+
+    <section id="exportPanel" hidden>
+      <h2>Export</h2>
+      <div class="grid4">
+        <label class="field">Frames per second <input type="number" id="xFps" min="1" max="120" step="0.01"></label>
+        <label class="field">Quality
+          <select id="xQuality"><option value="0.25">High</option><option value="0.12" selected>Balanced</option><option value="0.06">Small</option></select>
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" id="xBake"> Export at preview size <span id="xBakeVal"></span></label>
+      <p class="note">Smaller export = less download and GPU memory. Match it to how big the sprite appears in your game.</p>
+      <button class="export wide" id="exportBtn">Export .opal</button>
+      <p class="status" id="status" role="status"></p>
+      <a class="btn small" id="download" hidden>Download again</a>
+    </section>
+  </aside>
+</main>
+<div class="dropzone" id="drop" hidden><p>Drop to add</p></div>
+<script type="module" src="studio.js"></script>
+</body>
+</html>

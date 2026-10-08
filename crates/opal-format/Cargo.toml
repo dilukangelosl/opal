@@ -1,0 +1,4 @@
+[package]
+name = "opal-format"
+edition.workspace = true
+version.workspace = true
