@@ -1,6 +1,6 @@
 {
   "name": "opal-sprites",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Transparent video sprites for web games: play .opal files with a ~15 KB WebGL2 runtime, or as PixiJS textures.",
   "type": "module",
   "main": "./src/index.js",
@@ -55,6 +55,7 @@
   "homepage": "https://dilukangelosl.github.io/opal/",
   "bugs": "https://github.com/dilukangelosl/opal/issues",
   "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Diluk Angelo <dilukangelo@gmail.com> (commercial licenses)",
   "publishConfig": {
     "access": "public",
     "provenance": true

@@ -81,4 +81,4 @@ cp -r node_modules/opal-sprites/skills/* .claude/skills/
 WebCodecs: Chrome/Edge, Firefox desktop, Safari 26+, served over https or localhost. `.opal` files are plain H.264
 plus an alpha plane, so every one of those browsers decodes them in hardware.
 
-[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using it in a commercial product (anything that earns money) needs a commercial license from the author.
+[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using it in a commercial product (anything that earns money) needs a commercial license from the author: contact **dilukangelo@gmail.com**.

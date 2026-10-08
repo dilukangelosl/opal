@@ -190,4 +190,4 @@ The wordmark is constructed from circles and bars, so there's no font licence to
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using Opal in a commercial product (anything that earns money) needs a commercial license from the author.
+[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using Opal in a commercial product (anything that earns money) needs a commercial license from the author: contact **dilukangelo@gmail.com**.
