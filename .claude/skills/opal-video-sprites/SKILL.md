@@ -40,6 +40,22 @@ Prompt template (edit the subject line):
 - Backgrounds: same model, `16:9`, `2K`; ask for an empty, flat floor band ("bottom 22%") for characters to stand on.
 - Look at every still before animating it. A bad still makes every clip from it bad.
 
+## 1b. Pad the still before animating (do this for every character)
+Swords, arcs, palm flashes and capes reach past a still that already fills the frame. Like sprite-gen's
+`video-canvas`, shrink the character to about 70% of a 1024² canvas and place it back and low, so there's room
+in front and above. **Key out the original green first**, then composite onto a perfectly flat `#00FF00`. Padding
+with a slightly different green leaves a seam that the video model copies.
+```sh
+bg=$(ffmpeg -v error -i hero.png -vf "crop=8:8:0:0,scale=1:1" -f rawvideo -pix_fmt rgb24 - | od -An -tx1 | tr -d ' \n')
+ffmpeg -f lavfi -i color=c=0x00FF00:s=1024x1024 -i hero.png \
+  -filter_complex "[1]scale=716:716,colorkey=0x$bg:0.28:0.06[k];[0][k]overlay=70:230" -frames:v 1 hero_pad.png
+```
+- **All clips of one character use the same canvas,** so sizes and anchors match. If one clip needs a different
+  placement (for example, a run whose trailing dust needs room behind), the game shifts that clip's anchor by the
+  known offset: `(dx / 1024) * clip.width`.
+- Upload local stills with `upload_file` (`prepare_upload`, then `curl --upload-file` to the signed URL), and check
+  the CDN URL returns the same byte count before using it.
+
 ## 2. Character clips: pinned loops
 `minimax/h3-max/image-to-video` with **`image_url` = `end_image_url` = the still**, `prompt_expansion_mode: "disabled"`,
 `resolution: "768P"`. Pinning both ends to the same frame makes the clip close on itself (measured:
@@ -72,9 +88,24 @@ border**. Instead:
    the burst, in 4 of 4 tries. Don't keep paying for rerolls: run QA (§4), keep the clean range, and do the
    pop-in in code (scale 0.45→1 over the first 10% of the clip, fade over the last 25%).
 
+### 3b. Effects, round two (Rift Warden)
+- **The model zooms in on small effect stills.** A small, centred hit star or dust arc pinned as the first frame
+  came back filling the whole frame. Characters keep their scale; effects don't. Good alternatives:
+  - **Peak still → empty frame:** pin the effect at its peak as the *first* frame and the empty green as the *last*.
+    The clip then only dissipates. The explosion worked this way for its first 14 frames; trim the rest with `edges`.
+  - **Single-frame sprite:** encode the clean still (`opal encode … still.png`) and animate pop, rise and fade in
+    code. That's ideal for hit sparks and ground puffs that last under half a second.
+- **Looping effects** (fireball, orb, portal): still → pinned loop with "stays in exactly the same place, flames
+  flicker". These kept their scale and passed `edges`.
+- **Directional effects legitimately touch an edge:** a bolt from the sky touches the top, and a ground burst the
+  bottom. Use `sprite_qa edges --allow top,bottom` and place the hidden side off-screen or under the floor.
+- **The model adds effects you said not to add.** The hurt/flinch clip got an incoming slash streak in both takes.
+  If a clip keeps failing, drop it and do the feedback in code (knockback, blink, a hit spark).
+
 ## 4. QA: never encode without it
 ```sh
-python3 tools/sprite_qa.py edges clip.mp4          # exit 1 + failing frame ranges if anything touches the border
+python3 tools/sprite_qa.py edges clip.mp4          # exit 1 + failing frame ranges + which sides were touched
+python3 tools/sprite_qa.py edges bolt.mp4 --allow top,bottom   # sides the game hides anyway
 python3 tools/sprite_qa.py loop  clip.mp4 --fps 12  # whole clip vs best internal loop, as an @from-to range
 ffmpeg -i clip.mp4 -vf "fps=4,scale=200:-1,tile=8x1" -frames:v 1 sheet.png   # look at it
 ```
@@ -123,3 +154,8 @@ if (opal.progress(id) > 0.06 && opal.progress(id) < 0.34) hitTest(); // hit wind
 | Loop pops | unpinned clip | pin `end_image_url` = still; `sprite_qa loop` |
 | Huge GPU memory | 768p at 24 fps encoded as-is | `--fps 12 --scale` |
 | Character's green parts vanish | green in the art | magenta backdrop, or recolor |
+| Sword, cape or arc crosses the frame edge | the still fills the frame | §1b: pad the still to ~70%, character back and low |
+| Visible seam or box around the padded character | padded with a different green | key the original backdrop out, then composite onto flat #00FF00 |
+| A small effect fills the frame in the clip | the model zooms in on small subjects | peak-still → empty-frame clip, trimmed; or a single-frame sprite animated in code |
+| Effect sprite renders tiny | sparkles stretch its trim box to the whole frame | size it by its core (a fraction of `clip.width`), not by `box` |
+| Unwanted streaks or flashes in hurt clips | the model adds them anyway | drop the clip; knockback + blink + hit spark in code |

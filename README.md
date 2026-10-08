@@ -7,7 +7,12 @@
 
 <p align="center">Transparent video sprites for web games.</p>
 
-<p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/opal/web/game/">Play Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
+<p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/opal/web/game2/">Play Rift Warden</a> · <a href="https://dilukangelosl.github.io/opal/web/game/">Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
+
+<p align="center">
+  <a href="https://dilukangelosl.github.io/opal/web/game2/"><img src="docs/media/rift-warden-gameplay.gif" width="720" alt="Rift Warden gameplay: a knight-mage slashes skeletons, fireballs explode and thunder strikes every enemy; every character and effect is a transparent AI-generated video sprite"></a>
+  <br><sub>Rift Warden: sword, fireballs, dash and thunder, all transparent video sprites. <a href="https://dilukangelosl.github.io/opal/web/game2/">Play it</a> · <a href="docs/media/rift-warden-gameplay.mp4">gameplay video</a></sub>
+</p>
 
 <p align="center">
   <a href="https://dilukangelosl.github.io/opal/web/game/"><img src="docs/media/opal-dojo-gameplay.gif" width="720" alt="Opal Dojo gameplay: a ninja slashes through a horde of oni imps; every character and smoke burst is a transparent AI-generated video sprite"></a>
@@ -17,6 +22,11 @@
 Use transparent videos as game sprites. You prepare clips in **Opal Studio** (in the
 browser) or with the `opal` CLI, both producing a small `.opal` file. A ~15 KB runtime
 (Rust/wasm + WebCodecs + WebGL2) then plays thousands of them per frame.
+
+## Rift Warden (showcase game)
+`/web/game2/`: a knight-mage holds a ruined temple against skeleton warriors, rift bats and an obsidian golem boss.
+Move with A/D, **J** slash, **K** fireball, **Space** dash (with afterimages), and **L** for thunder once 10 soul orbs are collected.
+It uses 9 `.opal` files (391 frames, 2.6 MB): characters, a boss, portals, projectiles, pickups and effects. How the assets were made, including what failed and why: [game2/README.md](game2/README.md).
 
 ## Opal Dojo (demo game)
 `/web/game/` is a small arena brawler where every character and effect is an Opal video sprite. The assets were generated with fal and packed with the CLI; see [game/README.md](game/README.md).
@@ -113,6 +123,7 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `crates/opal-cli`: the `opal encode` command, which uses ffmpeg/ffprobe for decode and encode.
 - `crates/opal-studio`: the Studio's wasm core (wasm-bindgen).
 - `.claude/skills/opal-video-sprites/`: a Claude Code skill for generating game-ready video sprites with fal (stills → pinned loops → QA → encode), plus `tools/sprite_qa.py` (border-clipping and loop checks).
+- `web/game2/`: Rift Warden. `game2/` holds its fal-generated sources and build notes.
 - `web/game/`: Opal Dojo. `game/` holds its fal-generated sources and the build commands.
 - `web/player.html`: drop any `.opal` file to play all its clips through the real runtime.
 - `web/studio/`: the Studio UI. `web/compare.html` benchmarks Opal against `<video>`; `web/keying.html` previews keying.

@@ -6,6 +6,8 @@
 
 `edges` exits 1 when any frame has non-backdrop pixels on its border: that clip is cut off and
 must be regenerated (smaller subject, wider margin, or a pinned empty first/last frame).
+`--allow top,bottom` ignores sides the game hides anyway (a bolt from the sky, a ground burst);
+the report always says which sides were touched.
 `loop` prints an `--rect ...@a-b` frame range to paste into `opal encode`.
 """
 import argparse, subprocess, sys
@@ -27,14 +29,23 @@ def edges(args):
     ring = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
     px = lambda f, x, y: f[(y * w + x) * 3:(y * w + x) * 3 + 3]
     key = [sorted(px(first, x, y)[c] for x, y in ring)[len(ring) // 2] for c in range(3)]
-    band = [(x, y) for x in range(w) for y in range(args.band)] + [(x, y) for x in range(w) for y in range(h - args.band, h)] \
-         + [(x, y) for y in range(h) for x in range(args.band)] + [(x, y) for y in range(h) for x in range(w - args.band, w)]
-    bad = []
+    b_ = args.band
+    sides = {"top": [(x, y) for x in range(w) for y in range(b_)], "bottom": [(x, y) for x in range(w) for y in range(h - b_, h)],
+             "left": [(x, y) for y in range(h) for x in range(b_)], "right": [(x, y) for y in range(h) for x in range(w - b_, w)]}
+    allow = {s.strip() for s in args.allow.split(",") if s.strip()}
+    bad, touched = [], {k: 0 for k in sides}
     for i, f in enumerate(fr):
-        hits = sum(1 for x, y in band if sum((a - b) ** 2 for a, b in zip(px(f, x, y), key)) > args.dist ** 2)
-        if hits / len(band) > args.max_frac:
-            bad.append((i, hits / len(band)))
+        worst = 0
+        for name, band in sides.items():
+            hits = sum(1 for x, y in band if sum((a - b) ** 2 for a, b in zip(px(f, x, y), key)) > args.dist ** 2)
+            if hits / len(band) > args.max_frac:
+                touched[name] += 1
+                if name not in allow:
+                    worst = max(worst, hits / len(band))
+        if worst:
+            bad.append((i, worst))
     print(f"{args.clip}: backdrop #{''.join(f'{v:02x}' for v in key)}, {len(fr)} frames")
+    print("  sides touched (frames): " + ", ".join(f"{k} {v}" + (" (allowed)" if k in allow else "") for k, v in touched.items() if v) if any(touched.values()) else "  sides touched: none")
     if bad:
         worst = max(bad, key=lambda b: b[1])
         print(f"  FAIL: content touches the border in {len(bad)} frames (first {bad[0][0]}, worst {worst[0]}: {worst[1]:.1%} of the edge)")
@@ -72,6 +83,7 @@ sub = p.add_subparsers(dest="cmd", required=True)
 e = sub.add_parser("edges"); e.add_argument("clip"); e.add_argument("--band", type=int, default=2)
 e.add_argument("--dist", type=float, default=90, help="RGB distance from the backdrop that counts as content")
 e.add_argument("--max-frac", type=float, default=0.004, help="tolerated share of edge pixels (codec noise)")
+e.add_argument("--allow", default="", help="comma list of sides allowed to touch: top,bottom,left,right")
 l = sub.add_parser("loop"); l.add_argument("clip"); l.add_argument("--fps", type=float, default=12); l.add_argument("--min", type=int, default=8)
 a = p.parse_args()
 sys.exit(edges(a) if a.cmd == "edges" else loop(a))

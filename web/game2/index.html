@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Rift Warden</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Barlow+Semi+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --rift: #c77dff; --soul: #7df9ff; --gold: #ffd27a; --ember: #ff7a3d; --ink: #0b0714; --paper: #f3ecff }
+  html, body { margin: 0; height: 100%; background: #05030a; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none }
+  body { display: grid; place-items: center; font: 600 16px/1.3 "Barlow Semi Condensed", system-ui, sans-serif; color: var(--paper); font-variant-numeric: tabular-nums }
+  .world { position: relative; overflow: hidden; background: #111 }
+  .world > * { position: absolute; inset: 0; width: 100%; height: 100% }
+  #bg { object-fit: cover }
+  #cv { z-index: 1 } #fx2d { z-index: 2; pointer-events: none }
+  #flash { z-index: 3; background: #e9f6ff; opacity: 0; pointer-events: none; transition: opacity .25s }
+  .hud { z-index: 4; pointer-events: none; padding: 2% 2.4%; box-sizing: border-box }
+  .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 2% }
+  .bars { width: 30%; display: grid; gap: .6vmin }
+  .bar { height: 1.6vmin; border-radius: 1vmin; background: #0008; box-shadow: inset 0 0 0 1px #fff3; overflow: hidden }
+  .bar i { display: block; height: 100%; width: 100%; transform-origin: left; transition: transform .15s }
+  #hp i { background: linear-gradient(90deg, #ff4d6d, #ff8fa3) }
+  #soul i { background: linear-gradient(90deg, #6a5cff, var(--soul)) }
+  #soul.full i { animation: pulse .6s infinite alternate }
+  @keyframes pulse { to { filter: brightness(1.6) } }
+  .label { font-size: 1.5vmin; letter-spacing: .04em; opacity: .85 }
+  .score { font: 900 4.6vmin/1 Cinzel, serif; text-align: right; text-shadow: 0 .3vmin 0 #000a }
+  .sub { font-size: 1.7vmin; text-align: right; opacity: .85; margin-top: .4em }
+  .boss { position: absolute; left: 25%; right: 25%; top: 3%; text-align: center; font: 700 2vmin/1 Cinzel, serif; color: var(--ember); text-shadow: 0 2px 0 #000 }
+  .boss .bar { height: 1.4vmin; margin-top: .6vmin } .boss .bar i { background: linear-gradient(90deg, #ff5e1a, #ffb347) }
+  .banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 900 7vmin/1 Cinzel, serif; color: var(--gold); text-shadow: 0 .5vmin 0 #000b, 0 0 3vmin #c77dff88; opacity: 0; transition: opacity .3s }
+  .banner small { display: block; font: 600 2.2vmin/1.4 "Barlow Semi Condensed"; color: var(--paper); margin-top: 1vmin }
+  .banner.show { opacity: 1 }
+  .combo { position: absolute; right: 2.4%; top: 20%; font: 900 3.8vmin/1 Cinzel, serif; color: var(--gold); text-shadow: 0 .3vmin 0 #000a }
+  .tech { position: absolute; right: 2.4%; bottom: 2%; font-size: 1.4vmin; opacity: .6 }
+  .keys { position: absolute; left: 2.4%; bottom: 2%; font-size: 1.5vmin; opacity: .7 }
+  .screen { z-index: 5; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 45%, #1a0d2e66, #05030acc 72%) }
+  .card { text-align: center; max-width: 82% }
+  .card h1 { margin: 0; font: 900 10vmin/.95 Cinzel, serif; letter-spacing: .04em; color: var(--paper); text-shadow: 0 .6vmin 0 #000a, 0 0 4vmin #c77dff99 }
+  .card h1 span { color: var(--rift) }
+  .card p { font-size: 2.3vmin; margin: 1.1em 0 }
+  .card .k { font-size: 1.8vmin; opacity: .8; line-height: 1.8 }
+  .card kbd { font: inherit; padding: .1em .45em; border-radius: .4em; background: #fff2; box-shadow: inset 0 -2px 0 #0006 }
+  .card button { font: 900 3vmin/1 Cinzel, serif; color: var(--ink); background: linear-gradient(135deg, var(--soul), var(--rift)); border: 0; border-radius: 999px; padding: .6em 1.7em; cursor: pointer; box-shadow: 0 .3em 0 #4b2a7a }
+  .card button:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px }
+  .card .made { margin-top: 1.8em; font-size: 1.5vmin; opacity: .55 }
+  .pads { z-index: 4; pointer-events: none; display: none }
+  .pads button { pointer-events: auto; position: absolute; border-radius: 50%; border: 2px solid #fff5; background: #0007; color: var(--paper); font: 700 2.6vmin/1 "Barlow Semi Condensed"; touch-action: none; width: 13vmin; height: 13vmin }
+  #pl { left: 2.5%; bottom: 4% } #pr { left: calc(4% + 13vmin); bottom: 4% }
+  #pj { right: 3%; bottom: 4%; width: 16vmin; height: 16vmin; background: #6a5cff99 }
+  #pk { right: calc(4% + 16vmin); bottom: 3%; background: #ff7a3d99 }
+  #pd { right: 4%; bottom: calc(6% + 16vmin) }
+  #pu { right: calc(5% + 13vmin); bottom: calc(5% + 16vmin); background: #7df9ff55 }
+  @media (pointer: coarse) { .pads { display: block } .keys { display: none } }
+  [hidden] { display: none !important }
+</style>
+</head>
+<body>
+<div class="world" id="world">
+  <img id="bg" src="assets/bg.jpg" alt="">
+  <canvas id="cv"></canvas>
+  <canvas id="fx2d"></canvas>
+  <div id="flash"></div>
+  <div class="hud" id="hud" hidden>
+    <div class="row">
+      <div class="bars">
+        <div class="label">Warden</div><div class="bar" id="hp"><i></i></div>
+        <div class="label" id="soulLabel">Soul</div><div class="bar" id="soul"><i></i></div>
+      </div>
+      <div><div class="score" id="score">0</div><div class="sub" id="wave"></div></div>
+    </div>
+    <div class="boss" id="boss" hidden>Obsidian Rift Golem<div class="bar"><i id="bossHp"></i></div></div>
+    <div class="combo" id="combo"></div>
+    <div class="banner" id="banner"></div>
+    <div class="keys"><kbd>A</kbd><kbd>D</kbd> move · <kbd>J</kbd> slash · <kbd>K</kbd> fireball · <kbd>Space</kbd> dash · <kbd>L</kbd> thunder</div>
+    <div class="tech" id="tech"></div>
+  </div>
+  <div class="pads" id="pads">
+    <button id="pl" aria-label="Move left">◀</button><button id="pr" aria-label="Move right">▶</button>
+    <button id="pj" aria-label="Slash">Slash</button><button id="pk" aria-label="Fireball">Fire</button>
+    <button id="pd" aria-label="Dash">Dash</button><button id="pu" aria-label="Thunder">Thunder</button>
+  </div>
+  <div class="screen" id="title">
+    <div class="card">
+      <h1>Rift <span>Warden</span></h1>
+      <p>The sky is tearing open. Hold the temple against whatever comes through.</p>
+      <p class="k"><kbd>A</kbd> <kbd>D</kbd> move &nbsp; <kbd>J</kbd> slash &nbsp; <kbd>K</kbd> fireball &nbsp; <kbd>Space</kbd> dash<br>Collect soul orbs, then <kbd>L</kbd> calls thunder on everything</p>
+      <button id="start">Enter the rift</button>
+      <p class="made" id="loading">Loading video sprites…</p>
+    </div>
+  </div>
+  <div class="screen" id="over" hidden>
+    <div class="card">
+      <h1>The rift <span>wins</span></h1>
+      <p id="final"></p>
+      <button id="again">Stand again</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
