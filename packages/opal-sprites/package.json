@@ -6,20 +6,57 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "exports": {
-    ".": { "types": "./src/index.d.ts", "default": "./src/index.js" },
-    "./pixi": { "types": "./src/pixi.d.ts", "default": "./src/pixi.js" },
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./pixi": {
+      "types": "./src/pixi.d.ts",
+      "default": "./src/pixi.js"
+    },
     "./opal.wasm": "./src/opal.wasm",
     "./package.json": "./package.json"
   },
-  "files": ["src", "README.md", "LICENSE"],
+  "files": [
+    "src",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
-  "peerDependencies": { "pixi.js": ">=8.0.0" },
-  "peerDependenciesMeta": { "pixi.js": { "optional": true } },
-  "scripts": { "test": "node --test test/*.test.mjs" },
-  "keywords": ["sprites", "video", "transparent", "alpha", "webgl", "webcodecs", "pixijs", "pixi", "gamedev", "wasm"],
-  "repository": { "type": "git", "url": "git+https://github.com/dilukangelosl/opal.git", "directory": "packages/opal-sprites" },
+  "peerDependencies": {
+    "pixi.js": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pixi.js": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "sprites",
+    "video",
+    "transparent",
+    "alpha",
+    "webgl",
+    "webcodecs",
+    "pixijs",
+    "pixi",
+    "gamedev",
+    "wasm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dilukangelosl/opal.git",
+    "directory": "packages/opal-sprites"
+  },
   "homepage": "https://dilukangelosl.github.io/opal/",
   "bugs": "https://github.com/dilukangelosl/opal/issues",
   "license": "MIT",
-  "publishConfig": { "access": "public", "provenance": true }
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

@@ -67,6 +67,16 @@ const { fps, pages, clips } = await decodeOpal('/fx.opal');
 // pages: canvases with RGBA frames; clips.explosion.frames[i] = { page, x, y, w, h }
 ```
 
+## Claude Code skills
+The package ships two skills in `node_modules/opal-sprites/skills/`:
+- `opal-sprites` covers how to use Opal: the runtime, PixiJS, anchoring, memory and troubleshooting.
+- `opal-video-sprites` covers generating game-ready sprite videos with AI (fal) and packing them.
+
+Copy them into `.claude/skills/` (project) or `~/.claude/skills/` (user):
+```sh
+cp -r node_modules/opal-sprites/skills/* .claude/skills/
+```
+
 ## Requirements
 WebCodecs: Chrome/Edge, Firefox desktop, Safari 26+, served over https or localhost. `.opal` files are plain H.264
 plus an alpha plane, so every one of those browsers decodes them in hardware.
