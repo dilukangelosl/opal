@@ -27,7 +27,8 @@
   .card b { font-size: 18px }
   .card p { margin: 4px 0 0; color: var(--muted); font-size: 15px }
   .card.lead { grid-column: 1 / -1 }
-  .card.lead img { aspect-ratio: 21 / 9 }
+  .card video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; border-bottom: 1px solid var(--line); background: #0d1020 }
+  @media (prefers-reduced-motion: reduce) { .card video { display: none } .card.lead::before { content: ""; display: block; aspect-ratio: 16 / 9; background: url(docs/media/opal-dojo-gameplay-poster.jpg) center / cover } }
   .card.lead b { font-size: 24px; background: var(--opal); -webkit-background-clip: text; background-clip: text; color: transparent }
   ul { color: var(--muted); padding-left: 20px; margin: 36px 0 0 }
   footer { margin-top: 40px; color: var(--muted); font-size: 15px }
@@ -40,10 +41,10 @@
   </picture>
   <p class="lede">Transparent video sprites for web games. Turn green-screen or alpha video into tiny <code>.opal</code> files, and play thousands of them at once with a ~15 KB runtime.</p>
   <div class="grid">
-    <a class="card lead" href="web/game/"><img src="web/tutorial/img/game-kill.jpg" alt="Opal Dojo: a ninja slashing an imp into a puff of smoke"><div><b>Play Opal Dojo</b><p>A small brawler where every character and effect is an AI-generated video sprite.</p></div></a>
+    <a class="card lead" href="web/game/"><video src="docs/media/opal-dojo-gameplay.mp4" poster="docs/media/opal-dojo-gameplay-poster.jpg" autoplay muted loop playsinline preload="auto" aria-label="Opal Dojo gameplay: a ninja slashing through a horde of imps"></video><div><b>Play Opal Dojo</b><p>A small brawler where every character and effect is an AI-generated video sprite.</p></div></a>
     <a class="card" href="web/tutorial/"><img src="web/tutorial/img/clip-attack.jpg" alt="Frames of the ninja's slash animation"><div><b>How the game was made</b><p>Step by step: fal generation, pinned loops, QA, encoding, code.</p></div></a>
     <a class="card" href="web/studio/"><img src="web/tutorial/img/player.jpg" alt="Keyed hero animations"><div><b>Opal Studio</b><p>Crop, key, preview and export .opal in the browser.</p></div></a>
-    <a class="card" href="docs/media/opal-dojo-trailer.mp4"><img src="web/tutorial/img/poster.jpg" alt="Trailer still: the horde closing in"><div><b>Trailer</b><p>35 seconds of gameplay, recorded from the game.</p></div></a>
+    <a class="card" href="docs/media/opal-dojo-trailer.mp4"><img src="web/tutorial/img/poster.jpg" alt="Trailer still: the horde closing in"><div><b>Watch the trailer</b><p>35 seconds, with captions, recorded from the game.</p></div></a>
   </div>
   <ul>
     <li><a href="web/player.html">Player</a>: drop in any .opal file to play it</li>

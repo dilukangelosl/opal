@@ -9,6 +9,11 @@
 
 <p align="center"><b><a href="https://dilukangelosl.github.io/opal/">Live site</a></b> · <a href="https://dilukangelosl.github.io/opal/web/game/">Play Opal Dojo</a> · <a href="https://dilukangelosl.github.io/opal/web/tutorial/">How it was made</a> · <a href="https://dilukangelosl.github.io/opal/web/studio/">Studio</a> · <a href="docs/media/opal-dojo-trailer.mp4">Trailer</a></p>
 
+<p align="center">
+  <a href="https://dilukangelosl.github.io/opal/web/game/"><img src="docs/media/opal-dojo-gameplay.gif" width="720" alt="Opal Dojo gameplay: a ninja slashes through a horde of oni imps; every character and smoke burst is a transparent AI-generated video sprite"></a>
+  <br><sub>Opal Dojo: every character and effect is a transparent video sprite. <a href="docs/media/opal-dojo-trailer.mp4">Watch the full trailer</a> · <a href="https://dilukangelosl.github.io/opal/web/game/">play it</a></sub>
+</p>
+
 Use transparent videos as game sprites. You prepare clips in **Opal Studio** (in the
 browser) or with the `opal` CLI, both producing a small `.opal` file. A ~15 KB runtime
 (Rust/wasm + WebCodecs + WebGL2) then plays thousands of them per frame.
