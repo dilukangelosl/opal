@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Opal player</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #141b26; color: #e8edf4; font: 14px system-ui, sans-serif; overflow: hidden }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; background: repeating-conic-gradient(#2a3446 0 25%, #222b3a 0 50%) 0 0 / 24px 24px }
+  #ui { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; pointer-events: none }
+  #ui > * { pointer-events: auto }
+  label, button { background: #243044; border: 1px solid #2f3c52; color: inherit; border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit }
+  #info { background: #000a; padding: 6px 10px; border-radius: 6px; white-space: pre-wrap }
+  .name { position: fixed; transform: translate(-50%, 0); background: #000a; padding: 2px 6px; border-radius: 4px; font-size: 12px; pointer-events: none }
+  #drop { position: fixed; inset: 0; display: grid; place-items: center; font-size: 22px; color: #8e9bb0; pointer-events: none }
+</style>
+<canvas id="c"></canvas>
+<div id="drop">Drop a .opal file here (or use Open)</div>
+<div id="ui">
+  <label>Open .opal<input type="file" id="file" accept=".opal" hidden></label>
+  <label><input type="checkbox" id="light"> Light background</label>
+  <span id="info"></span>
+</div>
+<script type="module">
+  // Plays every clip of a dropped .opal file side by side, through the real runtime.
+  import { createOpal } from './opal.js';
+  const canvas = document.getElementById('c'), info = document.getElementById('info');
+  const dpr = Math.min(devicePixelRatio, 2);
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  const opal = await createOpal(canvas);
+  let ids = [];
+
+  async function show(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const t0 = performance.now();
+      const a = await opal.load(url);
+      const ms = performance.now() - t0;
+      ids.forEach((id) => opal.kill(id));
+      document.querySelectorAll('.name').forEach((n) => n.remove());
+      const clips = Object.entries(a.clips);
+      // lay clips out in a row, scaled to fit the window
+      const gap = 24, total = clips.reduce((s, [, c]) => s + c.width + gap, gap);
+      const k = Math.min(4, (innerWidth - 40) / total, (innerHeight - 160) / Math.max(...clips.map(([, c]) => c.height)));
+      let x = (innerWidth - total * k) / 2 + gap * k;
+      ids = clips.map(([name, c]) => {
+        const cx = x + (c.width * k) / 2, cy = innerHeight / 2 + 30;
+        x += (c.width + gap) * k;
+        document.body.insertAdjacentHTML('beforeend', `<div class="name" style="left:${cx}px;top:${cy + (c.height * k) / 2 + 6}px">${name} · ${c.frames}f</div>`);
+        return { id: opal.spawn(a, name, cx * dpr, cy * dpr, k * dpr), name, a };
+      });
+      info.textContent = `${file.name}: ${(a.bytes / 1024).toFixed(0)} KB, ${clips.length} clips, ${a.frames} frames, atlas ${a.atlas.join('×')}, ` +
+        `GPU ${(a.vram / 1e6).toFixed(1)} MB, decoded in ${ms.toFixed(0)} ms`;
+      document.getElementById('drop').style.display = 'none';
+      window.__player = { clips: clips.length, frames: a.frames };
+    } catch (e) {
+      info.textContent = `Can't play ${file.name}: ${e.message}`;
+      window.__player = { error: e.message };
+    }
+  }
+
+  document.getElementById('file').onchange = (e) => e.target.files[0] && show(e.target.files[0]);
+  document.getElementById('light').onchange = (e) =>
+    (canvas.style.background = e.target.checked ? 'repeating-conic-gradient(#fff 0 25%, #e4e8ef 0 50%) 0 0 / 24px 24px' : '');
+  addEventListener('dragover', (e) => e.preventDefault());
+  addEventListener('drop', (e) => { e.preventDefault(); e.dataTransfer.files[0] && show(e.dataTransfer.files[0]); });
+
+  let last = performance.now();
+  (function loop(now) {
+    // replay one-shot clips so they stay visible
+    for (const s of ids) if (opal.done(s.id)) opal.play(s.a, s.id, s.name);
+    opal.render(Math.min((now - last) / 1000, 0.1)); last = now;
+    requestAnimationFrame(loop);
+  })(last);
+</script>

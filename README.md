@@ -100,6 +100,7 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `crates/opal-encode`: keying (`key.rs`), trim, atlas packing, bleed and alpha stacking, shared by the CLI and the Studio.
 - `crates/opal-cli`: the `opal encode` command, which uses ffmpeg/ffprobe for decode and encode.
 - `crates/opal-studio`: the Studio's wasm core (wasm-bindgen).
+- `web/player.html`: drop any `.opal` file to play all its clips through the real runtime.
 - `web/studio/`: the Studio UI. `web/compare.html` benchmarks Opal against `<video>`; `web/keying.html` previews keying.
 - `brand/`: the logo (`logo/` masters, web icons and favicons) and the concept exploration.
 - `build-web.sh`: rebuilds `web/opal.wasm` and `web/studio/pkg/`. The built files are committed, so the pages work without a Rust toolchain. It uses ffmpeg/ffprobe for decode and encode. Trimming, bleeding, stacking, Annex-B→AVCC conversion and packing are done in Rust.
