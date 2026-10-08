@@ -19,9 +19,9 @@ export { decodeOpal, parseOpal } from './decode.js';
  * @param {{ scale?: number, pageSize?: number }} [opts]
  */
 export async function loadOpal(src, opts = {}) {
-  const d = await decodeOpal(src, opts);
+  const d = await decodeOpal(src, { bitmaps: true, ...opts }); // ImageBitmap pages: no canvas memory held
   const s = d.scale;
-  const sources = d.pages.map((canvas) => Texture.from(canvas).source);
+  const sources = d.pages.map((page) => Texture.from(page).source);
   const clips = {};
   for (const [name, c] of Object.entries(d.clips)) {
     clips[name] = c.frames.map((f) => new Texture({

@@ -40,6 +40,6 @@ export function parseOpal(buffer: ArrayBuffer | Uint8Array): OpalFile;
 
 export interface DecodedFrame { page: number; x: number; y: number; w: number; h: number }
 export interface DecodedClip extends OpalClip { frames: DecodedFrame[] }
-export interface DecodedOpal { fps: number; scale: number; pages: HTMLCanvasElement[]; clips: Record<string, DecodedClip> }
+export interface DecodedOpal { fps: number; scale: number; pages: (HTMLCanvasElement | ImageBitmap)[]; clips: Record<string, DecodedClip> }
 /** Decode all clips into RGBA frames on canvas pages (for PixiJS, three.js, Canvas2D…). */
-export function decodeOpal(src: string | URL | ArrayBuffer | Uint8Array, opts?: { scale?: number; pageSize?: number }): Promise<DecodedOpal>;
+export function decodeOpal(src: string | URL | ArrayBuffer | Uint8Array, opts?: { scale?: number; pageSize?: number; bitmaps?: boolean }): Promise<DecodedOpal>;
