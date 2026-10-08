@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opal in PixiJS</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  html, body { margin: 0; height: 100%; background: #07050d; color: #f3ecff; font: 500 15px/1.4 system-ui, sans-serif; overflow: hidden }
+  #info { position: fixed; left: 12px; top: 12px; background: #000a; padding: 8px 12px; border-radius: 8px; max-width: min(560px, calc(100% - 48px)) }
+  #info b { color: #c77dff }
+  code { background: #ffffff1a; padding: 1px 5px; border-radius: 4px }
+</style>
+<script type="importmap">
+{ "imports": {
+  "pixi.js": "https://cdn.jsdelivr.net/npm/pixi.js@8.21.0/dist/pixi.min.mjs",
+  "opal-sprites/pixi": "../../packages/opal-sprites/src/pixi.js"
+} }
+</script>
+</head>
+<body>
+<div id="info">Loading…</div>
+<script type="module">
+  // Rift Warden's .opal files rendered by PixiJS — no Opal renderer involved, just
+  // Pixi Textures + AnimatedSprite from `opal-sprites/pixi`.
+  import { Application, Assets, Sprite, Container } from 'pixi.js';
+  import { loadOpal } from 'opal-sprites/pixi';
+
+  const info = document.getElementById('info');
+  const app = new Application();
+  await app.init({ resizeTo: window, background: '#07050d', antialias: false, resolution: Math.min(devicePixelRatio, 2), autoDensity: true });
+  document.body.prepend(app.canvas);
+
+  const t0 = performance.now();
+  const A = '../game2/assets/';
+  const [bgTex, warden, skeleton, bat, portal, fireball, fx] = await Promise.all([
+    Assets.load(A + 'bg.jpg'),
+    ...['warden', 'skeleton', 'bat', 'portal', 'fireball', 'fx'].map((n) => loadOpal(A + n + '.opal')),
+  ]);
+  const ms = performance.now() - t0;
+
+  // a 1280x720 stage scaled to fit
+  const stage = new Container();
+  app.stage.addChild(stage);
+  const fit = () => { const k = Math.min(app.screen.width / 1280, app.screen.height / 720); stage.scale.set(k); stage.position.set((app.screen.width - 1280 * k) / 2, (app.screen.height - 720 * k) / 2); };
+  fit(); app.renderer.on('resize', fit);
+  const bg = new Sprite(bgTex); bg.width = 1280; bg.height = 720; stage.addChild(bg);
+  const GROUND = 652;
+
+  // feet-anchored characters: one call per sprite
+  const place = (asset, clip, x, height, facing = 1) => {
+    const s = asset.sprite(clip, { anchor: asset.feetAnchor(clip) });
+    const k = height / asset.clips[clip][0].frame.height; // visible pixels -> world size
+    s.scale.set(k * facing, k); s.position.set(x, GROUND);
+    stage.addChild(s); return s;
+  };
+  const p1 = portal.sprite('loop'); p1.anchor.set(0.5); p1.scale.set(0.7); p1.position.set(1080, GROUND - 120); stage.addChild(p1);
+  const skels = [760, 880, 1000].map((x, i) => { const s = place(skeleton, 'walk', x, 150, -1); s.gotoAndPlay(i * 7); return s; });
+  const hero = place(warden, 'idle', 330, 190);
+  const bats = [0, 1, 2].map((i) => { const s = bat.sprite('fly'); s.anchor.set(0.5); s.scale.set(0.55 * -1, 0.55); stage.addChild(s); return { s, i }; });
+  const balls = [];
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // The Warden runs around, slashes and casts. Arrow keys / A D move, J slashes, K casts
+  // (touching a key turns the autopilot off). Switching `textures` keeps her anchored
+  // because every frame is a trimmed texture of the same full video cell.
+  const H = { x: 330, facing: 1, clip: 'idle', busy: 0, auto: true, target: 900, pauseT: 1.2 };
+  const setClip = (clip) => {
+    if (H.clip === clip) return;
+    H.clip = clip;
+    hero.textures = warden.clips[clip];
+    const a = warden.feetAnchor(clip); hero.anchor.set(a.x, a.y);
+    hero.loop = warden.loops(clip);
+    hero.animationSpeed = (warden.fps / 60) * (clip === 'run' ? 1.3 : clip === 'idle' ? 1 : 2.2);
+    hero.gotoAndPlay(0);
+  };
+  const act = (clip) => {
+    if (H.busy > 0) return;
+    setClip(clip); H.busy = clip === 'slash' ? 0.55 : 0.5;
+    if (clip === 'cast') setTimeout(() => {
+      const f = fireball.sprite('loop'); f.anchor.set(0.5); f.scale.set(0.55 * H.facing, 0.55);
+      f.position.set(H.x + H.facing * 90, GROUND - 120); f.vx = 700 * H.facing; stage.addChild(f); balls.push(f);
+    }, 200);
+  };
+  const keys = new Set();
+  addEventListener('keydown', (e) => {
+    keys.add(e.code); H.auto = false;
+    if (e.code === 'KeyJ') act('slash'); if (e.code === 'KeyK') act('cast');
+  });
+  addEventListener('keyup', (e) => keys.delete(e.code));
+
+  let t = 0;
+  app.ticker.add((tk) => {
+    const dt = tk.deltaMS / 1000; t += dt;
+    H.busy -= dt;
+    let dir = 0;
+    if (H.auto) {
+      if (H.pauseT > 0) { H.pauseT -= dt; }
+      else if (Math.abs(H.target - H.x) < 12) {
+        H.facing = H.target > 640 ? -1 : 1; act(Math.random() < 0.5 ? 'cast' : 'slash');
+        H.target = H.target > 640 ? rand(180, 420) : rand(780, 1000); H.pauseT = 0.9;
+      } else dir = Math.sign(H.target - H.x);
+    } else dir = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0);
+    if (H.busy <= 0) {
+      if (dir) { H.facing = dir; H.x = Math.max(80, Math.min(1200, H.x + dir * 300 * dt)); setClip('run'); }
+      else setClip('idle');
+    }
+    hero.x = H.x; hero.scale.x = Math.abs(hero.scale.x) * H.facing;
+
+    for (const s of skels) {
+      const d = H.x - s.x; s.x += Math.sign(d) * 45 * dt; s.scale.x = Math.abs(s.scale.x) * Math.sign(d || 1);
+      if (Math.abs(d) < 70) s.x = H.x < 640 ? 1060 : 200; // walked into her: step back through the rift
+    }
+    for (const { s, i } of bats) s.position.set(640 + Math.cos(t * 0.7 + i * 2.1) * 300, 380 + Math.sin(t * 2 + i) * 40);
+    for (const f of [...balls]) {
+      f.x += f.vx * dt;
+      const hit = skels.find((s) => Math.abs(s.x - f.x) < 50);
+      if (hit || f.x < 40 || f.x > 1240) {
+        const e = fx.sprite('explosion'); e.anchor.set(0.5); e.position.set(f.x, f.y); stage.addChild(e);
+        e.onComplete = () => e.destroy(); f.destroy(); balls.splice(balls.indexOf(f), 1);
+        if (hit) hit.x = H.x < 640 ? 1060 : 200;
+      }
+    }
+  });
+  const frames = [warden, skeleton, bat, portal, fireball, fx].reduce((s, a) => s + Object.values(a.clips).reduce((x, c) => x + c.length, 0), 0);
+  info.innerHTML = `<b>PixiJS 8.21</b> rendering Rift Warden's <code>.opal</code> files through <code>opal-sprites/pixi</code>: plain <code>AnimatedSprite</code>s. ${frames} frames decoded in ${ms.toFixed(0)} ms. <br>Move with ← → or A D, <b>J</b> slash, <b>K</b> fireball.`;
+  window.__pixiReady = { frames, ms };
+</script>
+</body>
+</html>

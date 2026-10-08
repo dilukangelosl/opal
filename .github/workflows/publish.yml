@@ -1,0 +1,38 @@
+# Publishes packages/opal-sprites to npm when a GitHub release is published
+# (tag it v<version>, matching packages/opal-sprites/package.json), or by hand.
+# Needs a repository secret NPM_TOKEN (an npm "Automation" or granular token with publish rights).
+# Once the package exists you can switch to npm trusted publishing and drop the token.
+name: Publish to npm
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write   # npm provenance
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with: { tool: wasm-bindgen-cli@0.2.129 }
+      - run: cargo test --workspace
+      - run: ./build-web.sh
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, registry-url: 'https://registry.npmjs.org' }
+      - name: Check the tag matches the package version
+        if: github.event_name == 'release'
+        working-directory: packages/opal-sprites
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "${GITHUB_REF_NAME#v}" = "$v" ] || { echo "::error::release tag ${GITHUB_REF_NAME} != package version $v"; exit 1; }
+      - name: Test and publish
+        working-directory: packages/opal-sprites
+        run: |
+          npm test
+          npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -25,6 +25,35 @@ VFX: empty #00FF00 frame as first AND last ─▶ QA: edges → trim to the clea
   ran and finished.
 - Expect a full character (idle, run, attack) plus an enemy and a VFX to cost about $0.50–1.00.
 
+## 0b. Plan the asset list and budget first
+Write the list before spending anything. One row per clip: subject, method, seconds, loop or one-shot. The Rift
+Warden list, which worked, as a template:
+
+| Asset | Method | Clips (s) |
+|---|---|---|
+| Hero | padded still → pinned loops | idle 3, run 2, slash 2, cast 2 (hurt: skip, do it in code) |
+| Grunt enemy | padded still → pinned loops | walk 2, attack 2, death 2 (death: pin the **first frame only**, since it ends lying down) |
+| Flyer | still → pinned loop | fly 2 (the loop finder may pick a short internal cycle) |
+| Boss | padded still → pinned loops | idle 3, slam 2.5 (no walk: move it through portals/teleports in code) |
+| Projectile, pickup, portal | still of the effect → pinned loop | 2–3 each |
+| Explosion | peak still → empty frame | 2, trim |
+| Lightning / beam | empty frame → empty frame | 2, `--allow` the side it comes from |
+| Hit spark, dust puff | single still, animated in code | none |
+
+**Reality check on cost:** roughly a third of the generations were rejected (edge clipping, extra effects). Budget about
+1.5× the clip seconds. Rift Warden was 8 + 3 stills and about 33 s of accepted video for about $3.30 in total.
+
+**GPU memory budget** (desktop, with mips). Plan scales and fps so the total stays under about 250 MB, and load at
+`scale: 0.6` on phones (about 1/3):
+
+| File | Encode | GPU |
+|---|---|---|
+| Hero, 4 clips at 12 fps | `--scale 0.6` | 66 MB (a wide slash arc enlarges the atlas) |
+| Boss, 2 clips | `--fps 10 --scale 0.8` | 52 MB |
+| Grunt, 3 clips | `--scale 0.55` | 30 MB |
+| Lightning | `--scale 0.7` | 17 MB |
+| Small loops (fireball, orb, portal, bat) | `--scale 0.3–0.6` | 1–9 MB each |
+
 ## 1. Stills (one per character)
 Prompt template (edit the subject line):
 > 2D side-scrolling action game character sprite, full body, seen from the exact side facing right.
@@ -144,6 +173,22 @@ if (opal.progress(id) > 0.06 && opal.progress(id) < 0.34) hitTest(); // hit wind
 - Use one anchor (the idle clip's) for all clips of a character, since they share a canvas. Load order is draw order.
 - One-shots (`--once`): `opal.done(id)` tells you when to switch back; kill finished VFX instances.
 
+## 6b. PixiJS (npm `opal-sprites`)
+```js
+import { loadOpal } from 'opal-sprites/pixi';          // Pixi v8
+const hero = await loadOpal('warden.opal', { scale: mobile ? 0.6 : 1 });
+const s = hero.sprite('idle', { anchor: hero.feetAnchor('idle') }); // AnimatedSprite at the clip's fps
+s.scale.x = -1;                                          // face left
+s.textures = hero.clips.run; s.anchor.set(...Object.values(hero.feetAnchor('run'))); s.loop = hero.loops('run'); s.gotoAndPlay(0);
+```
+- Frames are trimmed textures whose `orig` is the whole video cell, so clips of one character line up. Re-apply
+  `feetAnchor(clip)` when switching clips, because each clip has its own visible box.
+- Clips generated on a *different* padded canvas (the shifted run) need the same x correction as in §1b.
+- Opal's own runtime is faster for crowds (texture arrays, one draw per file). Pixi suits scenes that already use
+  Pixi containers, filters and UI.
+- **Demos must move.** An idle clip is subtle, so a character standing still and breathing reads as "not animated".
+  Show a run that crosses the screen, actions and projectiles.
+
 ## Failure modes seen so far
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -159,3 +204,6 @@ if (opal.progress(id) > 0.06 && opal.progress(id) < 0.34) hitTest(); // hit wind
 | A small effect fills the frame in the clip | the model zooms in on small subjects | peak-still → empty-frame clip, trimmed; or a single-frame sprite animated in code |
 | Effect sprite renders tiny | sparkles stretch its trim box to the whole frame | size it by its core (a fraction of `clip.width`), not by `box` |
 | Unwanted streaks or flashes in hurt clips | the model adds them anyway | drop the clip; knockback + blink + hit spark in code |
+| Run clip gets dust puffs behind the feet that cross the edge | the model adds ground dust even when told "no dust" | regenerate on a canvas with more room behind, and shift the anchor in code (`(dx/1024)*clip.width`) |
+| A wave of stills/clips seems lost after a tool timeout | the submit timed out but the jobs ran | `search_request_history` before resubmitting, never blind retries |
+| Boss has no walk cycle | a walk cycle for a huge creature is costly and often slides | idle + attack only; reposition through portals, teleports or a cutaway |

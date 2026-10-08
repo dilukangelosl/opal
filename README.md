@@ -23,6 +23,24 @@ Use transparent videos as game sprites. You prepare clips in **Opal Studio** (in
 browser) or with the `opal` CLI, both producing a small `.opal` file. A ~15 KB runtime
 (Rust/wasm + WebCodecs + WebGL2) then plays thousands of them per frame.
 
+## npm: `opal-sprites` (with PixiJS support)
+```sh
+npm i opal-sprites
+```
+```js
+// PixiJS v8: .opal clips become normal textures for AnimatedSprite
+import { loadOpal } from 'opal-sprites/pixi';
+const hero = await loadOpal('warden.opal');
+const s = hero.sprite('run', { anchor: hero.feetAnchor('run') });   // playing AnimatedSprite
+app.stage.addChild(s);
+s.textures = hero.clips.slash;                                      // switch clip, stays anchored
+
+// or Opal's own renderer (fastest: one instanced draw per file)
+import { createOpal } from 'opal-sprites';
+```
+The package lives in [`packages/opal-sprites`](packages/opal-sprites); [PixiJS demo](https://dilukangelosl.github.io/opal/web/pixi/).
+It publishes to npm from GitHub Actions when you publish a release tagged `v<version>` (see `.github/workflows/publish.yml`).
+
 ## Rift Warden (showcase game)
 `/web/game2/`: a knight-mage holds a ruined temple against skeleton warriors, rift bats and an obsidian golem boss.
 Move with A/D, **J** slash, **K** fireball, **Space** dash (with afterimages), and **L** for thunder once 10 soul orbs are collected.
@@ -125,6 +143,8 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `.claude/skills/opal-video-sprites/`: a Claude Code skill for generating game-ready video sprites with fal (stills → pinned loops → QA → encode), plus `tools/sprite_qa.py` (border-clipping and loop checks).
 - `web/game2/`: Rift Warden. `game2/` holds its fal-generated sources and build notes.
 - `web/game/`: Opal Dojo. `game/` holds its fal-generated sources and the build commands.
+- `web/pixi/`: Rift Warden's assets rendered by PixiJS 8 through `opal-sprites/pixi`.
+- `packages/opal-sprites`: the npm package (runtime + decoder + PixiJS adapter), synced by `build-web.sh`.
 - `web/player.html`: drop any `.opal` file to play all its clips through the real runtime.
 - `web/studio/`: the Studio UI. `web/compare.html` benchmarks Opal against `<video>`; `web/keying.html` previews keying.
 - `brand/`: the logo (`logo/` masters, web icons and favicons) and the concept exploration.
