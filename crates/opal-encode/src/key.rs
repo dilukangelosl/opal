@@ -29,6 +29,11 @@ fn chromaticity(c: [f32; 3]) -> [f32; 2] {
 
 /// Colored keys: chromaticity distance in chroma units at mid brightness (fixed
 /// scale, so tolerance doesn't depend on which shade of the backdrop was picked).
+fn rgb([y, cb, cr]: [f32; 3]) -> [f32; 3] {
+    let (r, b) = (y + cr / 0.713, y + cb / 0.564);
+    [r, (y - 0.299 * r - 0.114 * b) / 0.587, b]
+}
+
 fn dist(c: [f32; 3], k: [f32; 3]) -> f32 {
     if neutral(k) {
         return ((c[0] - k[0]).powi(2) + (c[1] - k[1]).powi(2) + (c[2] - k[2]).powi(2)).sqrt();
@@ -152,12 +157,31 @@ impl Keyer {
     }
 
     fn pixel(&self, p: &mut [u8]) {
-        let c = ycc([p[0], p[1], p[2]].map(f32::from));
+        let mut c = ycc([p[0], p[1], p[2]].map(f32::from));
         let (k, d) = self.keys.iter().map(|&k| (k, dist(c, k))).min_by(|a, b| a.1.total_cmp(&b.1)).unwrap();
         // Clip black/white: snap the outer 5% so backdrop noise doesn't leave faint
         // pixels (which would also defeat trimming); stretch the rest so soft edges stay smooth.
-        let a = (((d - self.tol) / self.soft - 0.05) / 0.9).clamp(0.0, 1.0);
+        let stretch = |v: f32| ((v - 0.05) / 0.9).clamp(0.0, 1.0);
+        let mut a = stretch((d - self.tol) / self.soft);
+        // Distance says *whether* a pixel is backdrop; it can't say *how much* of a mixed pixel
+        // is. For that, project raw chroma onto the key's: a neutral fg (smoke, glow, a blade)
+        // mixed with the key at alpha a keeps (1 − a) of the key's chroma along that direction.
+        let kl2 = k[1] * k[1] + k[2] * k[2];
+        if !neutral(k) && kl2 > 1.0 {
+            a = a.min(stretch(1.0 - (c[1] * k[1] + c[2] * k[2]) / kl2));
+        }
         p[3] = (p[3] as f32 * a).round() as u8;
+
+        // Decontaminate partly transparent pixels (soft edges, motion blur, smoke, glows):
+        // the camera saw fg·a + key·(1−a), so recover fg = (seen − key·(1−a)) / a.
+        // ponytail: a floor of 0.2 stops noise blowing up in near-invisible pixels.
+        if a > 0.0 && a < 1.0 {
+            let (kr, ae) = (rgb(k), a.max(0.2));
+            for (o, kv) in p[..3].iter_mut().zip(kr) {
+                *o = ((*o as f32 - kv * (1.0 - ae)) / ae).round().clamp(0.0, 255.0) as u8;
+            }
+            c = ycc([p[0], p[1], p[2]].map(f32::from));
+        }
 
         // Despill: remove chroma pointing toward the key, fading out over
         // tol..tol+3*soft. ponytail: spill and real near-key colors (red on a pink
@@ -167,10 +191,7 @@ impl Keyer {
         if len > 1.0 && wgt > 0.0 && p[3] > 0 {
             let (ux, uy) = (k[1] / len, k[2] / len);
             let proj = (c[1] * ux + c[2] * uy).max(0.0) * wgt;
-            let (y, cb, cr) = (c[0], c[1] - ux * proj, c[2] - uy * proj);
-            let (r, b) = (y + cr / 0.713, y + cb / 0.564);
-            let g = (y - 0.299 * r - 0.114 * b) / 0.587;
-            for (o, v) in p[..3].iter_mut().zip([r, g, b]) {
+            for (o, v) in p[..3].iter_mut().zip(rgb([c[0], c[1] - ux * proj, c[2] - uy * proj])) {
                 *o = v.round().clamp(0.0, 255.0) as u8;
             }
         }
@@ -251,7 +272,16 @@ mod tests {
         }
         assert_eq!(px(24, 24), &[220, 30, 30, 255], "foreground damaged");
         let e = px(16, 20);
-        assert!(e[3] > 128 && e[1] < 192 && e[1].abs_diff(e[0]) < 25, "edge spill not reduced: {e:?}");
+        assert!(e[3] > 128 && (e[1] as i32) - (e[0] as i32) < 15, "edge spill not reduced: {e:?}");
+    }
+
+    #[test]
+    fn decontaminates_soft_pixels() {
+        // white smoke at ~50% over a pure green screen reads (128, 255, 128): mint, not white
+        let mut px = [128u8, 255, 128, 255];
+        Keyer::new(&[[0, 255, 0]], 30.0, 20.0, 1.0, 0).pixel(&mut px);
+        assert!(px[3] > 40 && px[3] < 255, "should stay partly transparent: {px:?}");
+        assert!((px[1] as i32) < px[0] as i32 + 25 && px[0] > 180, "green cast should be removed: {px:?}");
     }
 
     #[test]

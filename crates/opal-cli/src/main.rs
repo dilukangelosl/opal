@@ -8,11 +8,12 @@ use std::{env, fs, io::Write, path::Path, process::{Command, Stdio}};
 
 type Res<T> = Result<T, String>;
 
-const USAGE: &str = "usage: opal encode -o out.opal [--crf 20] [--once <clip>] INPUT...
+const USAGE: &str = "usage: opal encode -o out.opal [--crf 20] [--scale 0.5] [--fps 15] [--once <clip>] INPUT...
   INPUT       [name=]video.(mov|webm|...)   whole frame is one clip
   --grid CxR  slice the previous input into a CxR grid of cells...
   --names a,b,,d[@0-23]   ...named row-major; empty name = skip cell; @from-to = frame range
-  --rect name=x,y,w,h[@0-23]   add an arbitrary region of the previous input
+  --rect name=x,y,w,h[@0-23]   add an arbitrary region of the previous input (source pixels)
+  --scale s   shrink frames (0<s<=1) · --fps f   resample time (frame ranges count output frames)
   --key auto | #rrggbb,#rgb,...  chroma-key the previous input (auto = detect backdrop)
   --key-tol 30  --key-soft 20  --despill 1  --despeckle 16   keying tuning
       (tol/soft: chroma distance; despill 0..1; despeckle: drop islands < N px, 0 = off)";
@@ -47,12 +48,15 @@ fn run() -> Res<()> {
         return Err(USAGE.into());
     }
     let (mut out, mut crf, mut once, mut inputs) = (None, 20u32, vec![], Vec::<Input>::new());
+    let (mut scale, mut out_fps) = (1f32, None::<f32>);
     let (mut tol, mut soft, mut despill, mut speck) = (30f32, 20f32, 1f32, 16usize);
     while let Some(a) = args.next() {
         let mut next = || args.next().ok_or(USAGE);
         match a.as_str() {
             "-o" => out = Some(next()?),
             "--crf" => crf = next()?.parse().map_err(|_| "bad --crf")?,
+            "--scale" => scale = next()?.parse().ok().filter(|v: &f32| *v > 0.0 && *v <= 1.0).ok_or("--scale wants 0 < s <= 1")?,
+            "--fps" => out_fps = Some(next()?.parse().ok().filter(|v: &f32| *v > 0.0).ok_or("bad --fps")?),
             "--once" => once.push(next()?),
             "--key-tol" => tol = next()?.parse().map_err(|_| "bad --key-tol")?,
             "--key-soft" => soft = next()?.parse().map_err(|_| "bad --key-soft")?,
@@ -87,15 +91,19 @@ fn run() -> Res<()> {
 
     // 1. Decode, resolve regions, trim each region over its frame range, pack per input.
     // ponytail: all frames in RAM; stream if inputs get huge.
-    let fps = probe(&inputs[0].path)?.2;
+    let fps = out_fps.unwrap_or(probe(&inputs[0].path)?.2);
     let mut decoded = vec![]; // (rgba, w, h, regions, span)
     let (mut aw, mut ah) = (0, 0);
     for inp in &inputs {
         let (w, h, f, codec) = probe(&inp.path)?;
-        if (f - fps).abs() > 0.01 {
-            return Err(format!("{}: all inputs must share fps ({fps})", inp.path));
+        if out_fps.is_none() && (f - fps).abs() > 0.01 {
+            return Err(format!("{}: inputs have different fps ({f} vs {fps}); pass --fps to resample", inp.path));
         }
-        let mut rgba = decode(&inp.path, &codec)?;
+        // --scale/--fps resample at decode time; --grid/--rect coordinates stay in source pixels
+        let even = |v: usize| ((v as f32 * scale) as usize / 2 * 2).max(2);
+        let sw = w;
+        let (w, h) = (even(w), even(h));
+        let mut rgba = decode(&inp.path, &codec, w, h, out_fps)?;
         if let Some(spec) = &inp.key {
             let keys = match spec.as_str() {
                 "auto" => Keyer::new(&[], tol, soft, despill, speck).detect(&rgba, w, h).map_err(|e| format!("{}: {e}", inp.path))?,
@@ -105,7 +113,7 @@ fn run() -> Res<()> {
             Keyer::new(&keys, tol, soft, despill, speck).apply(&mut rgba, w, h);
         }
         let total = rgba.len() / (w * h * 4);
-        let mut regions = resolve(inp, w, h, total)?;
+        let mut regions = resolve(inp, w, h, total, w as f32 / sw as f32)?;
         for r in &mut regions {
             let frames = (r.frames.0..r.frames.1).map(|t| &rgba[t * w * h * 4..(t + 1) * w * h * 4]);
             r.bbox = bbox(frames, w, r.cell).ok_or(format!("{}: region '{}' is fully transparent", inp.path, r.name))?;
@@ -198,7 +206,8 @@ fn range(s: &str, total: usize) -> Res<(String, (usize, usize))> {
     Ok((name.into(), (a, b + 1)))
 }
 
-fn resolve(inp: &Input, w: usize, h: usize, total: usize) -> Res<Vec<Region>> {
+/// `k` maps --rect source-pixel coordinates to the (possibly --scale'd) decoded frame.
+fn resolve(inp: &Input, w: usize, h: usize, total: usize, k: f32) -> Res<Vec<Region>> {
     let region = |name, cell, frames| Region { name, cell, frames, bbox: [0; 4], at: [0; 2] };
     let mut out = vec![];
     if let Some((cols, rows)) = inp.grid {
@@ -220,6 +229,7 @@ fn resolve(inp: &Input, w: usize, h: usize, total: usize) -> Res<Vec<Region>> {
         };
         let v: Vec<usize> = geom.split(',').map(|x| x.parse().map_err(|_| bad())).collect::<Res<_>>()?;
         let [x, y, rw, rh] = v[..] else { return Err(bad()) };
+        let [x, y, rw, rh] = [x, y, rw, rh].map(|v| (v as f32 * k).round() as usize);
         if x + rw > w || y + rh > h || rw == 0 || rh == 0 {
             return Err(format!("--rect {name}: outside {w}x{h} frame"));
         }
@@ -250,7 +260,7 @@ fn probe(p: &str) -> Res<(usize, usize, f32, String)> {
     Ok((v[1].parse().map_err(|_| bad())?, v[2].parse().map_err(|_| bad())?, fps, v[0].into()))
 }
 
-fn decode(p: &str, codec: &str) -> Res<Vec<u8>> {
+fn decode(p: &str, codec: &str, w: usize, h: usize, fps: Option<f32>) -> Res<Vec<u8>> {
     let mut c = Command::new("ffmpeg");
     c.args(["-v", "error"]);
     // ffmpeg's native VP8/9 decoders drop alpha; libvpx keeps it.
@@ -259,7 +269,9 @@ fn decode(p: &str, codec: &str) -> Res<Vec<u8>> {
         "vp8" => c.args(["-c:v", "libvpx"]),
         _ => &mut c,
     };
-    let o = c.args(["-i", p, "-f", "rawvideo", "-pix_fmt", "rgba", "-"]).output().map_err(|e| format!("ffmpeg: {e}"))?;
+    let mut vf = fps.map(|f| format!("fps={f},")).unwrap_or_default();
+    vf += &format!("scale={w}:{h}:flags=lanczos");
+    let o = c.args(["-i", p, "-vf", &vf, "-f", "rawvideo", "-pix_fmt", "rgba", "-"]).output().map_err(|e| format!("ffmpeg: {e}"))?;
     if !o.status.success() {
         return Err(format!("decode {p}: {}", String::from_utf8_lossy(&o.stderr)));
     }

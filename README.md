@@ -11,6 +11,10 @@ Use transparent videos as game sprites. You prepare clips in **Opal Studio** (in
 browser) or with the `opal` CLI, both producing a small `.opal` file. A ~15 KB runtime
 (Rust/wasm + WebCodecs + WebGL2) then plays thousands of them per frame.
 
+## Opal Dojo (demo game)
+`/web/game/` is a small arena brawler where every character and effect is an Opal video sprite. The assets were generated with fal and packed with the CLI; see [game/README.md](game/README.md).
+Controls: ← → / A D to move, Space / J to slash. On touch screens, on-screen pads appear.
+
 ## Opal Studio
 `python3 -m http.server`, then open `/web/studio/`. Everything runs in the browser and
 nothing is uploaded anywhere. You can:
@@ -32,6 +36,7 @@ encoded frames.
 ```
 cargo build --release -p opal-cli
 ./target/release/opal encode -o hero.opal idle=idle.mov run=run.mov --once die die.mov
+# --scale 0.5 --fps 12 shrink frames and resample time (big GPU memory savings for game sprites)
 
 # one sheet video with all animations in a grid: name cells row-major,
 # empty name = skip cell, @from-to = frame range
@@ -100,6 +105,7 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `crates/opal-encode`: keying (`key.rs`), trim, atlas packing, bleed and alpha stacking, shared by the CLI and the Studio.
 - `crates/opal-cli`: the `opal encode` command, which uses ffmpeg/ffprobe for decode and encode.
 - `crates/opal-studio`: the Studio's wasm core (wasm-bindgen).
+- `web/game/`: Opal Dojo. `game/` holds its fal-generated sources and the build commands.
 - `web/player.html`: drop any `.opal` file to play all its clips through the real runtime.
 - `web/studio/`: the Studio UI. `web/compare.html` benchmarks Opal against `<video>`; `web/keying.html` previews keying.
 - `brand/`: the logo (`logo/` masters, web icons and favicons) and the concept exploration.

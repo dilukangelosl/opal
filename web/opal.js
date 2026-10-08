@@ -142,10 +142,12 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
     for (let c = 0; c < w.opal_clip_count(id); c++) {
       clips[str(w.opal_clip_name_ptr(id, c), w.opal_clip_name_len(id, c))] = {
         index: c, frames: w.opal_clip_frames(id, c), width: w.opal_clip_w(id, c), height: w.opal_clip_h(id, c),
+        // visible part inside the cell (x, y, w, h): e.g. feet = box[1] + box[3] for ground anchoring
+        box: [0, 1, 2, 3].map((i) => w.opal_clip_box(id, c, i)),
       };
     }
     const vram = lw * lh * 4 * n * (mipmaps ? 4 / 3 : 1);
-    const a = { id, tex, vao, buf, clips, frames: n, atlas: [aw, ah], layer: [lw, lh], vram, bytes: bytes.length };
+    const a = { id, tex, vao, buf, clips, frames: n, fps: w.opal_fps(id), atlas: [aw, ah], layer: [lw, lh], vram, bytes: bytes.length };
     assets.push(a);
     return a;
   }
@@ -187,6 +189,8 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
     set: (id, x, y, scale = 1, opacity = 1) => w.opal_set(id, x, y, scale, opacity),
     play: (a, id, clip) => w.opal_play(id, clipIndex(a, clip)),
     done: (id) => !!w.opal_done(id),
+    speed: (id, s) => w.opal_speed(id, s),
+    progress: (id) => w.opal_progress(id),
     kill: (id) => w.opal_kill(id),
   };
 }

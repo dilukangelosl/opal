@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Opal Dojo</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #0d1020; --lantern: #ffb35c; --blood: #e0475b; --paper: #f4ead8 }
+  html, body { margin: 0; height: 100%; background: #07080f; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none }
+  body { display: grid; place-items: center; font: 600 16px/1.3 system-ui, sans-serif; color: var(--paper); font-variant-numeric: tabular-nums }
+  .world { position: relative; overflow: hidden; background: #111 }
+  .world > * { position: absolute; inset: 0; width: 100%; height: 100% }
+  #bg { object-fit: cover; transform-origin: 50% 80% }
+  #cv { z-index: 1 }
+  .hud { z-index: 2; pointer-events: none; padding: 2.2% 2.6%; box-sizing: border-box }
+  .row { display: flex; justify-content: space-between; align-items: flex-start }
+  .hearts { font-size: 2.2vmin; letter-spacing: .2em; color: var(--blood); text-shadow: 0 2px 0 #0008 }
+  .score { font: 800 4.6vmin/1 "Shippori Mincho B1", serif; text-shadow: 0 3px 0 #0009 }
+  .sub { font-size: 1.6vmin; opacity: .8; margin-top: .4em }
+  .tech { text-align: right; font-size: 1.4vmin; opacity: .7 }
+  .banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 800 7vmin/1 "Shippori Mincho B1", serif; color: var(--lantern); text-shadow: 0 4px 0 #000a; opacity: 0; transition: opacity .25s }
+  .banner.show { opacity: 1 }
+  .combo { position: absolute; right: 2.6%; top: 22%; font: 800 3.6vmin/1 "Shippori Mincho B1", serif; color: var(--lantern); text-shadow: 0 3px 0 #000a }
+  .screen { z-index: 3; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 45%, #0d102066, #07080fcc 70%) }
+  .card { text-align: center; max-width: 80%; }
+  .card h1 { margin: 0; font: 800 11vmin/0.95 "Shippori Mincho B1", serif; letter-spacing: .02em; color: var(--paper); text-shadow: 0 6px 0 #000a }
+  .card h1 span { color: var(--lantern) }
+  .card p { font-size: 2.2vmin; opacity: .9; margin: 1.2em 0 }
+  .card .keys { font-size: 1.8vmin; opacity: .7 }
+  .card button { font: 800 3vmin/1 "Shippori Mincho B1", serif; color: var(--ink); background: var(--lantern); border: 0; border-radius: 999px; padding: .55em 1.6em; cursor: pointer; box-shadow: 0 .25em 0 #a0581e }
+  .card button:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px }
+  .card .made { margin-top: 2em; font-size: 1.5vmin; opacity: .55 }
+  .pads { z-index: 2; pointer-events: none; display: none }
+  .pads button { pointer-events: auto; position: absolute; bottom: 4%; width: 15vmin; height: 15vmin; border-radius: 50%; border: 2px solid #fff5; background: #0006; color: var(--paper); font: 800 6vmin/1 "Shippori Mincho B1", serif; touch-action: none }
+  #pl { left: 3% } #pr { left: calc(6% + 15vmin) } #pa { right: 4%; width: 19vmin; height: 19vmin; background: #e0475b88 }
+  @media (pointer: coarse) { .pads { display: block } }
+  [hidden] { display: none !important }
+</style>
+</head>
+<body>
+<div class="world" id="world">
+  <img id="bg" src="assets/bg.jpg" alt="">
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hud" hidden>
+    <div class="row">
+      <div><div class="score" id="score">0</div><div class="hearts" id="hearts"></div><div class="sub" id="wave"></div></div>
+      <div class="tech" id="tech"></div>
+    </div>
+    <div class="combo" id="combo"></div>
+    <div class="banner" id="banner"></div>
+  </div>
+  <div class="pads" id="pads"><button id="pl" aria-label="Move left">◀</button><button id="pr" aria-label="Move right">▶</button><button id="pa" aria-label="Slash">斬</button></div>
+  <div class="screen" id="title">
+    <div class="card">
+      <h1>Opal <span>Dojo</span></h1>
+      <p>The oni horde comes from both sides. Hold the courtyard.</p>
+      <p class="keys">← → or A D to move · Space or J to slash</p>
+      <button id="start">Begin</button>
+      <p class="made" id="loading">Loading video sprites…</p>
+    </div>
+  </div>
+  <div class="screen" id="over" hidden>
+    <div class="card">
+      <h1>The dojo <span>falls</span></h1>
+      <p id="final"></p>
+      <button id="again">Fight again</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>

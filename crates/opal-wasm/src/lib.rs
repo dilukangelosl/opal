@@ -16,6 +16,7 @@ struct Inst {
     clip: u32,
     alive: bool,
     t: f32,
+    speed: f32,
     x: f32,
     y: f32,
     scale: f32,
@@ -71,6 +72,12 @@ pub extern "C" fn opal_clip_frames(a: u32, c: u32) -> u32 { asset(a).clips[c as 
 pub extern "C" fn opal_clip_w(a: u32, c: u32) -> u32 { asset(a).clips[c as usize].src[0] as u32 }
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_clip_h(a: u32, c: u32) -> u32 { asset(a).clips[c as usize].src[1] as u32 }
+/// Visible box of a clip inside its source cell: 0 = x, 1 = y, 2 = w, 3 = h.
+#[unsafe(no_mangle)]
+pub extern "C" fn opal_clip_box(a: u32, c: u32, i: u32) -> u32 {
+    let c = &asset(a).clips[c as usize];
+    [c.origin[0], c.origin[1], c.rect[2], c.rect[3]][i as usize & 3] as u32
+}
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_coded_height(a: u32) -> u32 { asset(a).coded_height as u32 }
 #[unsafe(no_mangle)]
@@ -81,6 +88,8 @@ pub extern "C" fn opal_codec_len(a: u32) -> usize { asset(a).codec.len() }
 pub extern "C" fn opal_desc_ptr(a: u32) -> *const u8 { asset(a).description.as_ptr() }
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_desc_len(a: u32) -> usize { asset(a).description.len() }
+#[unsafe(no_mangle)]
+pub extern "C" fn opal_fps(a: u32) -> f32 { asset(a).fps }
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_frame_count(a: u32) -> u32 { asset(a).frames.len() as u32 }
 #[unsafe(no_mangle)]
@@ -101,7 +110,7 @@ pub extern "C" fn opal_clip_name_len(a: u32, c: u32) -> usize { asset(a).clips[c
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_spawn(asset_id: u32, clip: u32, x: f32, y: f32, scale: f32) -> u32 {
     assert!((clip as usize) < asset(asset_id).clips.len());
-    let inst = Inst { asset: asset_id, clip, alive: true, t: 0.0, x, y, scale, opacity: 1.0 };
+    let inst = Inst { asset: asset_id, clip, alive: true, t: 0.0, speed: 1.0, x, y, scale, opacity: 1.0 };
     let st = s();
     match st.free.pop() {
         Some(id) => {
@@ -138,6 +147,20 @@ pub extern "C" fn opal_done(id: u32) -> u32 {
     (!c.looped && i.t * o.fps >= c.count as f32) as u32
 }
 
+/// Playback speed multiplier (1 = clip fps).
+#[unsafe(no_mangle)]
+pub extern "C" fn opal_speed(id: u32, speed: f32) {
+    s().insts[id as usize].speed = speed;
+}
+
+/// How far through its clip the instance is, 0..1 (keeps growing past 1 for a finished one-shot).
+#[unsafe(no_mangle)]
+pub extern "C" fn opal_progress(id: u32) -> f32 {
+    let i = &s().insts[id as usize];
+    let o = asset(i.asset);
+    i.t * o.fps / o.clips[i.clip as usize].count as f32
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_kill(id: u32) {
     let st = s();
@@ -156,19 +179,20 @@ pub extern "C" fn opal_tick(dt: f32) {
         let o = &a.opal;
         let c = &o.clips[i.clip as usize];
         let len = c.count as f32 / o.fps;
-        i.t += dt;
+        i.t += dt * i.speed;
         if c.looped && i.t >= len {
             i.t %= len; // keep t small so f32 precision never drifts
         }
         let f = ((i.t * o.fps) as u32).min(c.count - 1);
-        let k = i.scale;
+        // negative scale mirrors horizontally only (sprites face left/right)
+        let (kx, ky) = (i.scale, i.scale.abs());
         let [rx, ry, rw, rh] = c.rect.map(|v| v as f32);
         let (aw, ah) = (o.width as f32, o.height as f32);
         a.batch.extend_from_slice(&[
-            i.x + (c.origin[0] as f32 - c.src[0] as f32 * 0.5) * k,
-            i.y + (c.origin[1] as f32 - c.src[1] as f32 * 0.5) * k,
-            rw * k,
-            rh * k,
+            i.x + (c.origin[0] as f32 - c.src[0] as f32 * 0.5) * kx,
+            i.y + (c.origin[1] as f32 - c.src[1] as f32 * 0.5) * ky,
+            rw * kx,
+            rh * ky,
             rx / aw,
             ry / ah,
             rw / aw,
