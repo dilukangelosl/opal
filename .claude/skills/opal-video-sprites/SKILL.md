@@ -213,9 +213,9 @@ s.textures = hero.clips.run; s.anchor.set(...Object.values(hero.feetAnchor('run'
 | Effect isn't attached to the character (fire jet off the mouth, wrong timing) | separate effect sprite placed by guesswork | bake it in: generate "breathes fire to the right" on a wide 16:9 canvas with the character at the left, then measure the fire front per frame to time gameplay (cells ignite as the front passes) |
 | GPU memory far bigger than the clips | an `.opal` file's frame layers are as large as its largest clip, in each dimension | one file per size class (wide breath, tall pillar, square symbols); no mixing |
 
-## 7. Lessons from Ashvane's Hoard (a slot built from video)
+## 7. Lessons from a slot game built from video
 - **UI chrome can be video too.** Generate a board frame still (inside and outside flat green), animate it pinned,
-  and measure the opening (`tools/measure_frame.py` in ashvanes-hoard: it measures vertical extents *away* from
+  and measure the opening (measure it from a frame of the clip: measure vertical extents *away* from
   the centre, because crests hang into the opening there). Size the grid to the opening and draw the frame
   **after** the symbols (load order = draw order): it masks symbols as they tumble in and out. Fade symbols out
   past the opening's top and bottom too.
