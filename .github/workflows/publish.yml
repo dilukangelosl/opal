@@ -34,6 +34,6 @@ jobs:
         run: |
           npm test
           # npm provenance needs a public source repo
-          if [ "${{ github.event.repository.private }}" = "true" ]; then npm publish --access public; else npm publish --provenance --access public; fi
+          if [ "${{ github.event.repository.private }}" = "true" ]; then npm publish --access public --provenance=false; else npm publish --provenance --access public; fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
