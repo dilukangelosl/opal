@@ -187,3 +187,7 @@ The mark is the O resolving into transparency pixels at its edge: what Opal does
 
 Colours: ink `#141B26`. The opal gradient is `#7EF0D0` → `#8FC8FF` → `#B69CFF` → `#FFB38A`, and the one-colour accent is `#B69CFF`.
 The wordmark is constructed from circles and bars, so there's no font licence to worry about. Trademark clearance hasn't been checked.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using Opal in a commercial product (anything that earns money) needs a commercial license from the author.
