@@ -1,3 +1,4 @@
+import { opalMark } from './mark.js';
 // Opal web runtime glue. Rust/wasm owns the format + sprite state; this file
 // only drives WebCodecs (hardware decode) and WebGL2 (one instanced draw per asset).
 //
@@ -41,15 +42,6 @@ in vec3 uvw; in float op; out vec4 o;
 void main(){ o = texture(tex, uvw) * op; }`;
 
 const STRIDE = 10 * 4; // x y w h | u v uw vh | layer opacity
-
-// Licence footprint: one console line and a data-opal attribute on <html>. The fingerprint string is used at runtime,
-// so it survives minification and shows up in every bundle that ships Opal (searchable in HTTP Archive, grep.app…).
-const OPAL_FP = 'opal-fp-7d1a6e0c';
-function opalMark() {
-  if (typeof document === 'undefined' || document.documentElement.hasAttribute('data-opal')) return;
-  document.documentElement.setAttribute('data-opal', OPAL_FP);
-  console.info(`Opal video sprites (${OPAL_FP}) · PolyForm Noncommercial license · commercial use: dilukangelo@gmail.com`);
-}
 
 export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.meta.url)) {
   opalMark();

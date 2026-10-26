@@ -1,3 +1,4 @@
+import { opalMark } from './mark.js';
 // .opal parsing and decoding to plain RGBA canvases, for renderers other than
 // Opal's own (PixiJS, three.js, Canvas2D…). Mirrors crates/opal-format (v2).
 // Decoding uses the browser's hardware H.264 decoder (WebCodecs).
@@ -98,15 +99,6 @@ void main(){ vec2 uv = vec2(gl_FragCoord.x / size.x, 1.0 - gl_FragCoord.y / size
  * @param {{ scale?: number, pageSize?: number, bitmaps?: boolean }} [opts] scale < 1 stores frames smaller (less memory)
  * @returns {Promise<{ fps: number, scale: number, pages: (HTMLCanvasElement|ImageBitmap)[], clips: Record<string, DecodedClip> }>}
  */
-// Licence footprint: one console line and a data-opal attribute on <html>. The fingerprint string is used at runtime,
-// so it survives minification and shows up in every bundle that ships Opal (searchable in HTTP Archive, grep.app…).
-const OPAL_FP = 'opal-fp-7d1a6e0c';
-function opalMark() {
-  if (typeof document === 'undefined' || document.documentElement.hasAttribute('data-opal')) return;
-  document.documentElement.setAttribute('data-opal', OPAL_FP);
-  console.info(`Opal video sprites (${OPAL_FP}) · PolyForm Noncommercial license · commercial use: dilukangelo@gmail.com`);
-}
-
 export async function decodeOpal(src, { scale = 1, pageSize = 2048, bitmaps = false } = {}) {
   opalMark();
   if (!('VideoDecoder' in globalThis)) throw new Error('opal: WebCodecs is unavailable (needs https and Chrome, Edge, Firefox desktop or Safari 26+)');

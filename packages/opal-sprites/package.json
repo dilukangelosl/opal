@@ -1,6 +1,6 @@
 {
   "name": "opal-sprites",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Transparent video sprites for web games: play .opal files with a ~15 KB WebGL2 runtime, or as PixiJS textures.",
   "type": "module",
   "main": "./src/index.js",

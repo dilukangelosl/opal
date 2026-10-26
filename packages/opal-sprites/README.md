@@ -82,3 +82,9 @@ WebCodecs: Chrome/Edge, Firefox desktop, Safari 26+, served over https or localh
 plus an alpha plane, so every one of those browsers decodes them in hardware.
 
 [PolyForm Noncommercial 1.0.0](LICENSE): free for personal, hobby, research and other noncommercial use. Using it in a commercial product (anything that earns money) needs a commercial license from the author: contact **dilukangelo@gmail.com**.
+
+Commercial licensees declare their grant once in the page, and the console line names it instead of the noncommercial notice:
+
+```html
+<meta name="opal-license" content="OPAL-COM-2026-001 Your Studio" />
+```
