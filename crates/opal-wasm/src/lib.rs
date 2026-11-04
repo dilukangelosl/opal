@@ -78,6 +78,11 @@ pub extern "C" fn opal_clip_box(a: u32, c: u32, i: u32) -> u32 {
     let c = &asset(a).clips[c as usize];
     [c.origin[0], c.origin[1], c.rect[2], c.rect[3]][i as usize & 3] as u32
 }
+/// Visible box of frame `f` of clip `c` inside the clip rect: 0 = x, 1 = y, 2 = w, 3 = h.
+#[unsafe(no_mangle)]
+pub extern "C" fn opal_clip_frame_box(a: u32, c: u32, f: u32, i: u32) -> u32 {
+    asset(a).clips[c as usize].box_at(f as usize)[i as usize & 3] as u32
+}
 #[unsafe(no_mangle)]
 pub extern "C" fn opal_coded_height(a: u32) -> u32 { asset(a).coded_height as u32 }
 #[unsafe(no_mangle)]
@@ -184,19 +189,24 @@ pub extern "C" fn opal_tick(dt: f32) {
             i.t %= len; // keep t small so f32 precision never drifts
         }
         let f = ((i.t * o.fps) as u32).min(c.count - 1);
+        // draw only this frame's visible box (v3 files), not the clip's union rect: less GPU fill
+        let [bx, by, bw, bh] = c.box_at(f as usize).map(|v| v as f32);
+        if bw == 0.0 || bh == 0.0 {
+            continue; // fully transparent frame
+        }
         // negative scale mirrors horizontally only (sprites face left/right)
         let (kx, ky) = (i.scale, i.scale.abs());
-        let [rx, ry, rw, rh] = c.rect.map(|v| v as f32);
+        let [rx, ry, ..] = c.rect.map(|v| v as f32);
         let (aw, ah) = (o.width as f32, o.height as f32);
         a.batch.extend_from_slice(&[
-            i.x + (c.origin[0] as f32 - c.src[0] as f32 * 0.5) * kx,
-            i.y + (c.origin[1] as f32 - c.src[1] as f32 * 0.5) * ky,
-            rw * kx,
-            rh * ky,
-            rx / aw,
-            ry / ah,
-            rw / aw,
-            rh / ah,
+            i.x + (c.origin[0] as f32 + bx - c.src[0] as f32 * 0.5) * kx,
+            i.y + (c.origin[1] as f32 + by - c.src[1] as f32 * 0.5) * ky,
+            bw * kx,
+            bh * ky,
+            (rx + bx) / aw,
+            (ry + by) / ah,
+            bw / aw,
+            bh / ah,
             (c.first + f) as f32,
             i.opacity,
         ]);

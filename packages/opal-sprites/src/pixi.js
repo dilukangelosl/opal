@@ -28,7 +28,7 @@ export async function loadOpal(src, opts = {}) {
       source: sources[f.page],
       frame: new Rectangle(f.x, f.y, f.w, f.h),
       orig: new Rectangle(0, 0, c.src[0] * s, c.src[1] * s),
-      trim: new Rectangle(c.origin[0] * s, c.origin[1] * s, f.w, f.h),
+      trim: new Rectangle((c.origin[0] + f.bx) * s, (c.origin[1] + f.by) * s, f.w, f.h),
       defaultAnchor: { x: 0.5, y: 0.5 },
       label: `${name}#${f.page}`,
     }));
@@ -38,6 +38,8 @@ export async function loadOpal(src, opts = {}) {
     fps: d.fps,
     /** Texture arrays per clip, for `new AnimatedSprite(clips.name)`. */
     clips,
+    /** Parsed clip records (rect, origin, src, loop…) by name, in file pixels. */
+    info: meta,
     /** Whether the clip was encoded to loop (`--once` clips don't). */
     loops: (name) => meta[name].loop,
     /** Anchor that puts the clip's lowest visible pixel (the feet) at the sprite's y. */
@@ -94,11 +96,10 @@ export async function createPixiOpal(canvas, { app, stage } = {}) {
     root.addChild(layer);
     const clips = {};
     for (const [name, textures] of Object.entries(p.clips)) {
-      const t0 = textures[0];
       // file-scale numbers, identical to createOpal's clip info
-      const w = Math.round(t0.orig.width / scale), h = Math.round(t0.orig.height / scale);
-      const box = [t0.trim.x / scale, t0.trim.y / scale, t0.trim.width / scale, t0.trim.height / scale].map(Math.round);
-      clips[name] = { index: Object.keys(clips).length, frames: textures.length, width: w, height: h, box, textures, loop: p.loops(name) };
+      const c = p.info[name];
+      const box = [c.origin[0], c.origin[1], c.rect[2], c.rect[3]];
+      clips[name] = { index: Object.keys(clips).length, frames: textures.length, width: c.src[0], height: c.src[1], box, textures, loop: c.loop };
     }
     const frames = Object.values(clips).reduce((s, c) => s + c.frames, 0);
     return { fps: p.fps, frames, clips, layer, loadScale: scale, pixi: p };

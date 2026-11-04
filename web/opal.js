@@ -84,7 +84,9 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
   // opts.scale: store frames at this fraction of encoded size (0.5 = 1/4 VRAM). Good mobile lever.
   // opts.mipmaps: +33% VRAM, but keep on: sprites drawn smaller than authored are
   //   both crisper and FASTER with mips (no texture-cache thrash). Measured.
-  async function load(url, { scale = 1, mipmaps = true } = {}) {
+  // opts.filter: 'trilinear' (default, blends two mip levels) or 'bilinear' (nearest mip:
+  //   cheaper sampling, a little shimmer when a sprite scales through a mip boundary).
+  async function load(url, { scale = 1, mipmaps = true, filter = 'trilinear' } = {}) {
     const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
     const ptr = w.opal_alloc(bytes.length);
     u8(ptr, bytes.length).set(bytes);
@@ -140,7 +142,8 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
 
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, tex);
     if (mipmaps) gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+    const minFilter = !mipmaps ? gl.LINEAR : filter === 'bilinear' ? gl.LINEAR_MIPMAP_NEAREST : gl.LINEAR_MIPMAP_LINEAR;
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, minFilter);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
@@ -163,7 +166,7 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
       };
     }
     const vram = lw * lh * 4 * n * (mipmaps ? 4 / 3 : 1);
-    const a = { id, tex, vao, buf, clips, frames: n, fps: w.opal_fps(id), atlas: [aw, ah], layer: [lw, lh], vram, bytes: bytes.length };
+    const a = { id, tex, vao, buf, cap: 0, clips, frames: n, fps: w.opal_fps(id), atlas: [aw, ah], layer: [lw, lh], vram, bytes: bytes.length };
     assets.push(a);
     return a;
   }
@@ -191,7 +194,12 @@ export async function createOpal(canvas, wasmUrl = new URL('opal.wasm', import.m
       gl.bindTexture(gl.TEXTURE_2D_ARRAY, a.tex);
       gl.bindVertexArray(a.vao);
       gl.bindBuffer(gl.ARRAY_BUFFER, a.buf);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(w.memory.buffer, w.opal_batch_ptr(a.id) >>> 0, len), gl.STREAM_DRAW);
+      const batch = new Float32Array(w.memory.buffer, w.opal_batch_ptr(a.id) >>> 0, len);
+      if (len > a.cap) {
+        a.cap = Math.max(len, a.cap * 2); // grow once, then stream into the same store
+        gl.bufferData(gl.ARRAY_BUFFER, a.cap * 4, gl.STREAM_DRAW);
+      }
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, batch);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, len / 10);
     }
     gl.bindVertexArray(null);

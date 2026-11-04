@@ -24,6 +24,38 @@ pub fn bbox<'a>(frames: impl IntoIterator<Item = &'a [u8]>, w: usize, rect: [usi
     (x1 > 0).then(|| [x0, y0, x1 - x0, y1 - y0])
 }
 
+/// Padding for [`frame_boxes`]: H.264 ringing leaves faint alpha (≤ ~20/255) up to
+/// 3 px outside a hard edge; 4 px keeps the picture pixel-identical to the union rect.
+pub const BOX_PAD: usize = 4;
+
+/// Per-frame visible box inside `rect`, relative to it, grown by `pad` px on each
+/// side (clamped to `rect`) so codec ringing at the edge still gets drawn. A fully
+/// transparent frame gives `[0, 0, 0, 0]`. Goes into `Clip::boxes`.
+pub fn frame_boxes<'a>(frames: impl IntoIterator<Item = &'a [u8]>, w: usize, rect: [usize; 4], pad: usize) -> Vec<[u16; 4]> {
+    let [rx, ry, rw, rh] = rect;
+    frames
+        .into_iter()
+        .map(|f| match bbox([f], w, rect) {
+            Some([x, y, bw, bh]) => {
+                let (x0, y0) = (x.saturating_sub(pad).max(rx), y.saturating_sub(pad).max(ry));
+                let (x1, y1) = ((x + bw + pad).min(rx + rw), (y + bh + pad).min(ry + rh));
+                [x0 - rx, y0 - ry, x1 - x0, y1 - y0].map(|v| v as u16)
+            }
+            None => [0; 4],
+        })
+        .collect()
+}
+
+/// Average box area as a fraction of the `[w, h]` rect: the share of fill the
+/// runtime still pays with per-frame boxes (1.0 = boxes save nothing).
+pub fn box_fill(boxes: &[[u16; 4]], [w, h]: [usize; 2]) -> f32 {
+    if boxes.is_empty() || w * h == 0 {
+        return 1.0;
+    }
+    let sum: usize = boxes.iter().map(|b| b[2] as usize * b[3] as usize).sum();
+    sum as f32 / (w * h * boxes.len()) as f32
+}
+
 /// Shelf-pack `[w, h]` rects (tallest first), trying every atlas width and
 /// keeping the one that fits mobile decoders (stacked ≤ 2048), then smallest
 /// coded area, then squarest. Returns (positions, atlas w, atlas h).
@@ -170,5 +202,13 @@ mod tests {
         assert_eq!(&out[(16 * 16 + 1) * 4..][..3], &[255, 255, 255]); // alpha below it
         assert_eq!(out[(16 * 16) * 4], 0); // transparent neighbor's alpha
         assert_eq!(&out[..3], &[200, 10, 20]); // bled color
+
+        // per-frame boxes: relative to the rect, padded and clamped; empty frame = zero box
+        let empty = vec![0u8; w * h * 4];
+        let boxes = frame_boxes([&f[..], &empty[..]], w, [2, 1, 4, 4], 1);
+        assert_eq!(boxes, vec![[0, 0, 3, 3], [0, 0, 0, 0]]);
+        assert_eq!(frame_boxes([&f[..]], w, [3, 2, 1, 1], 1), vec![[0, 0, 1, 1]]);
+        assert!((box_fill(&boxes, [4, 4]) - 9.0 / 32.0).abs() < 1e-6);
+        assert_eq!(box_fill(&[], [4, 4]), 1.0);
     }
 }

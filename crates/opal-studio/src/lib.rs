@@ -6,7 +6,7 @@
 //! Studio layout: every clip gets its own rect in one atlas and all clips share
 //! the timeline from frame 0, so N clips of L frames cost L encoded frames.
 
-use opal_encode::{bbox, key::Keyer, pack, stack, Blit};
+use opal_encode::{bbox, frame_boxes, key::Keyer, pack, stack, Blit, BOX_PAD};
 use opal_format::{Clip, Frame, Opal};
 use wasm_bindgen::prelude::*;
 
@@ -37,6 +37,7 @@ struct Item {
     frames: Vec<u8>,
     bbox: [usize; 4],
     at: [usize; 2],
+    boxes: Vec<[u16; 4]>,
 }
 
 impl Item {
@@ -67,7 +68,8 @@ impl Project {
         }
         let b = bbox(frames.chunks_exact(flen), w, [0, 0, w, h])
             .ok_or_else(|| JsError::new(&format!("clip '{name}' is fully transparent — check the key or crop")))?;
-        self.items.push(Item { name, looped, w, h, frames, bbox: b, at: [0, 0] });
+        let boxes = frame_boxes(frames.chunks_exact(flen), w, b, BOX_PAD);
+        self.items.push(Item { name, looped, w, h, frames, bbox: b, at: [0, 0], boxes });
         Ok(())
     }
 
@@ -134,6 +136,7 @@ impl Project {
                     rect: [i.at[0], i.at[1], i.bbox[2], i.bbox[3]].map(|v| v as u16),
                     origin: [i.bbox[0], i.bbox[1]].map(|v| v as u16),
                     src: [i.w, i.h].map(|v| v as u16),
+                    boxes: i.boxes.clone(),
                 })
                 .collect(),
             frames,

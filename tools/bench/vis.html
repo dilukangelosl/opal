@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>body{margin:0;background:#888}canvas{display:block}</style>
+<canvas id="c" width="900" height="400"></canvas>
+<script type="module">
+  // Renders every clip (alternating mirrored) plus a small one, advanced to ?frame=k, then exposes the pixels.
+  import { createOpal } from './opal.js';
+  const q = new URLSearchParams(location.search);
+  const canvas = document.getElementById('c');
+  const opal = await createOpal(canvas);
+  const hero = await opal.load(q.get('file') ?? '../examples/hero.opal');
+  Object.keys(hero.clips).forEach((c, i) => opal.spawn(hero, c, 100 + i * 160, 200, i % 2 ? -1.2 : 1.2));
+  opal.spawn(hero, 'run', 830, 100, 0.5);
+  opal.spawn(hero, 'die', 830, 300, -0.5);
+  const k = +(q.get('frame') ?? 17);
+  for (let i = 0; i < k; i++) opal.render(1 / 30);
+  opal.render(0);
+  const gl = opal.gl, buf = new Uint8Array(canvas.width * canvas.height * 4);
+  gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  let s = '';
+  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  window.__pixels = btoa(s);
+</script>

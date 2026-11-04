@@ -11,7 +11,7 @@ export interface OpalAsset {
 export interface OpalRuntime {
   gl: WebGL2RenderingContext;
   /** Decode an .opal file once into GPU memory. `scale` < 1 stores smaller frames (0.5 = 1/4 memory). */
-  load(url: string | URL, opts?: { scale?: number; mipmaps?: boolean }): Promise<OpalAsset>;
+  load(url: string | URL, opts?: { scale?: number; mipmaps?: boolean; filter?: 'trilinear' | 'bilinear' }): Promise<OpalAsset>;
   /** Advance animations by `dt` seconds and draw everything (one instanced draw per file). */
   render(dt: number): void;
   /** Spawn a sprite; x/y is the center of the clip's video cell in canvas pixels. Negative scale mirrors horizontally. */
@@ -30,6 +30,8 @@ export function createOpal(canvas: HTMLCanvasElement, wasmUrl?: string | URL): P
 export interface OpalClip {
   name: string; first: number; count: number; loop: boolean;
   rect: [number, number, number, number]; origin: [number, number]; src: [number, number];
+  /** v3 files: each frame's visible box [x, y, w, h] inside `rect` (w = 0: transparent frame). null in v2 files. */
+  boxes: [number, number, number, number][] | null;
 }
 export interface OpalFile {
   version: number; width: number; height: number; codedWidth: number; codedHeight: number;
@@ -38,7 +40,8 @@ export interface OpalFile {
 }
 export function parseOpal(buffer: ArrayBuffer | Uint8Array): OpalFile;
 
-export interface DecodedFrame { page: number; x: number; y: number; w: number; h: number }
+/** Where the frame's visible pixels landed on a page, and the box they came from inside the clip rect (file pixels). */
+export interface DecodedFrame { page: number; x: number; y: number; w: number; h: number; bx: number; by: number; bw: number; bh: number }
 export interface DecodedClip extends OpalClip { frames: DecodedFrame[] }
 export interface DecodedOpal { fps: number; scale: number; pages: (HTMLCanvasElement | ImageBitmap)[]; clips: Record<string, DecodedClip> }
 /** Decode all clips into RGBA frames on canvas pages (for PixiJS, three.js, Canvas2D…). */

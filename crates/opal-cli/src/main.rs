@@ -2,7 +2,7 @@
 //! Shells out to ffmpeg/ffprobe for decode/encode; does region slicing, trim,
 //! packing, color bleed, alpha stacking and container packing itself.
 
-use opal_encode::{bbox, key::{self, Keyer}, pack, stack, Blit};
+use opal_encode::{bbox, box_fill, frame_boxes, key::{self, Keyer}, pack, stack, Blit, BOX_PAD};
 use opal_format::{Clip, Frame, Opal};
 use std::{env, fs, io::Write, path::Path, process::{Command, Stdio}};
 
@@ -33,6 +33,7 @@ struct Region {
     frames: (usize, usize), // [from, to)
     bbox: [usize; 4],     // trimmed rect in source coords
     at: [usize; 2],       // packed position in the atlas
+    boxes: Vec<[u16; 4]>, // per-frame visible box inside bbox
 }
 
 fn main() {
@@ -115,8 +116,9 @@ fn run() -> Res<()> {
         let total = rgba.len() / (w * h * 4);
         let mut regions = resolve(inp, w, h, total, w as f32 / sw as f32)?;
         for r in &mut regions {
-            let frames = (r.frames.0..r.frames.1).map(|t| &rgba[t * w * h * 4..(t + 1) * w * h * 4]);
-            r.bbox = bbox(frames, w, r.cell).ok_or(format!("{}: region '{}' is fully transparent", inp.path, r.name))?;
+            let frames = || (r.frames.0..r.frames.1).map(|t| &rgba[t * w * h * 4..(t + 1) * w * h * 4]);
+            r.bbox = bbox(frames(), w, r.cell).ok_or(format!("{}: region '{}' is fully transparent", inp.path, r.name))?;
+            r.boxes = frame_boxes(frames(), w, r.bbox, BOX_PAD);
         }
         let (at, pw, ph) = pack(&regions.iter().map(|r| [r.bbox[2], r.bbox[3]]).collect::<Vec<_>>());
         regions.iter_mut().zip(at).for_each(|(r, a)| r.at = a);
@@ -146,6 +148,7 @@ fn run() -> Res<()> {
                 rect: [r.at[0], r.at[1], r.bbox[2], r.bbox[3]].map(|v| v as u16),
                 origin: [r.bbox[0] - r.cell[0], r.bbox[1] - r.cell[1]].map(|v| v as u16),
                 src: [r.cell[2], r.cell[3]].map(|v| v as u16),
+                boxes: r.boxes.clone(),
             });
         }
         for t in *s0..*s1 {
@@ -190,7 +193,11 @@ fn run() -> Res<()> {
         opal.codec, bytes.len() as f64 / 1024.0, (aw * ah * 4 * n as usize) as f64 / 1e6
     );
     for c in &opal.clips {
-        println!("  {:<12} {:>3} frames  {}x{} (cell {}x{}){}", c.name, c.count, c.rect[2], c.rect[3], c.src[0], c.src[1], if c.looped { "" } else { "  once" });
+        let fill = box_fill(&c.boxes, [c.rect[2] as usize, c.rect[3] as usize]);
+        println!(
+            "  {:<12} {:>3} frames  {}x{} (cell {}x{})  fill {:.0}%{}",
+            c.name, c.count, c.rect[2], c.rect[3], c.src[0], c.src[1], fill * 100.0, if c.looped { "" } else { "  once" }
+        );
     }
     Ok(())
 }
@@ -208,7 +215,7 @@ fn range(s: &str, total: usize) -> Res<(String, (usize, usize))> {
 
 /// `k` maps --rect source-pixel coordinates to the (possibly --scale'd) decoded frame.
 fn resolve(inp: &Input, w: usize, h: usize, total: usize, k: f32) -> Res<Vec<Region>> {
-    let region = |name, cell, frames| Region { name, cell, frames, bbox: [0; 4], at: [0; 2] };
+    let region = |name, cell, frames| Region { name, cell, frames, bbox: [0; 4], at: [0; 2], boxes: vec![] };
     let mut out = vec![];
     if let Some((cols, rows)) = inp.grid {
         let (gw, gh) = (w / cols, h / rows);

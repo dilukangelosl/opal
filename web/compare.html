@@ -68,13 +68,15 @@
       const canvas = document.getElementById('c');
       canvas.width = W * dpr; canvas.height = H * dpr;
       const opal = await createOpal(canvas);
-      const hero = await opal.load('../examples/hero.opal', { scale: half ? 0.5 : 1 });
-      for (const s of sprites) s.id = opal.spawn(hero, s.clip, s.x * dpr, s.y * dpr, s.k * dpr);
+      // ?file=…opal benchmarks another asset (clips are taken from the file); ?filter=bilinear tries the cheaper mip filter
+      const hero = await opal.load(q.get('file') ?? '../examples/hero.opal', { scale: half ? 0.5 : 1, filter: q.get('filter') ?? 'trilinear' });
+      const names = Object.keys(hero.clips);
+      sprites.forEach((s, i) => { s.clip = names[i % names.length]; s.id = opal.spawn(hero, s.clip, s.x * dpr, s.y * dpr, s.k * dpr); });
       draw = (dt) => {
         step(dt);
         for (const s of sprites) {
           opal.set(s.id, s.x * dpr, s.y * dpr, s.k * dpr);
-          if (opal.done(s.id)) opal.play(hero, s.id, 'die'); // replay one-shot clip
+          if (opal.done(s.id)) opal.play(hero, s.id, s.clip); // replay one-shot clip
         }
         opal.render(dt);
       };

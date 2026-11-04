@@ -155,10 +155,14 @@ GPU throttling isn't simulated, so real phones need testing. WebCodecs requires 
 - `crates/opal-wasm`: the runtime core. It handles parsing, sprite instances, animation and batch building, with no wasm-bindgen.
 - `web/opal.js`: glue for WebCodecs decode, the stacked→RGBA blit and instanced drawing.
 
-## `.opal` v2 (little-endian)
-`"OPAL"` · u16 version (2) · u16 flags (bit0 = stacked alpha) · u16 atlas width, height, coded_w, coded_h · f32 fps ·
-u8+codec string · u32+description (avcC) · u16 clip count {u8+name, u32 first, u32 count, u8 loop, u16 rect[4], u16 origin[2], u16 src[2]} ·
+## `.opal` v3 (little-endian)
+`"OPAL"` · u16 version (3) · u16 flags (bit0 = stacked alpha, bit1 = per-frame boxes) · u16 atlas width, height, coded_w, coded_h · f32 fps ·
+u8+codec string · u32+description (avcC) · u16 clip count {u8+name, u32 first, u32 count, u8 loop, u16 rect[4], u16 origin[2], u16 src[2], [bit1: count × u16 box[4]]} ·
 u32 frame count {u32 size, u8 key} · frame data (AVCC length-prefixed).
+
+A box is the frame's visible area inside its clip rect (x, y, w, h; w = 0 for a blank frame), padded 4 px for codec ringing.
+The runtime draws that box instead of the whole rect, so an effect that swells and shrinks only pays GPU fill for the pixels it
+uses that frame (`opal encode` prints the saving as `fill %`). v2 files still load; every frame then covers its rect.
 
 ## Roadmap (not built yet)
 1. **Streaming mode** for long or large clips such as cutscenes and backgrounds, where VRAM caching costs too much (w·h·4·frames). It would use one decoder with a small frame ring shared by instances.

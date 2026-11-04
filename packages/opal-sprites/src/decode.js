@@ -20,8 +20,10 @@ export function parseOpal(buffer) {
   if (MAGIC.some((m, i) => b[i] !== m)) throw new Error('opal: not an .opal file');
   p = 4;
   const version = u16();
-  if (version !== 2) throw new Error(`opal: unsupported version ${version}`);
-  if (!(u16() & 1)) throw new Error('opal: unsupported layout');
+  if (version !== 2 && version !== 3) throw new Error(`opal: unsupported version ${version}`);
+  const flags = u16();
+  if (!(flags & 1)) throw new Error('opal: unsupported layout');
+  const boxed = version >= 3 && (flags & 2) !== 0; // v3: per-frame visible boxes inside each clip rect
   const [width, height, codedWidth, codedHeight] = [u16(), u16(), u16(), u16()];
   need(4); const fps = v.getFloat32(p, true); p += 4;
   const codec = str(u8());
@@ -31,7 +33,8 @@ export function parseOpal(buffer) {
     const name = str(u8());
     const first = u32(), count = u32(), loop = u8() !== 0;
     const rect = [u16(), u16(), u16(), u16()], origin = [u16(), u16()], src = [u16(), u16()];
-    clips.push({ name, first, count, loop, rect, origin, src });
+    const boxes = boxed ? Array.from({ length: count }, () => [u16(), u16(), u16(), u16()]) : null;
+    clips.push({ name, first, count, loop, rect, origin, src, boxes });
   }
   const frames = [];
   let offset = 0;
@@ -44,6 +47,7 @@ export function parseOpal(buffer) {
   if (offset > data.length || !(fps > 0) || !width || !height || width > codedWidth || height > codedHeight) throw new Error('opal: corrupt header');
   for (const c of clips) {
     if (!c.count || c.first + c.count > frames.length || c.rect[0] + c.rect[2] > width || c.rect[1] + c.rect[3] > height) throw new Error(`opal: corrupt clip ${c.name}`);
+    if (c.boxes?.some((b) => b[0] + b[2] > c.rect[2] || b[1] + b[3] > c.rect[3])) throw new Error(`opal: corrupt frame box in clip ${c.name}`);
   }
   return { version, width, height, codedWidth, codedHeight, fps, codec, description, clips, frames, data };
 }
@@ -122,9 +126,14 @@ export async function decodeOpal(src, { scale = 1, pageSize = 2048, bitmaps = fa
   };
   const clips = {};
   for (const c of o.clips) {
-    const w = Math.max(1, Math.round(c.rect[2] * scale)), h = Math.max(1, Math.round(c.rect[3] * scale));
-    if (w > pageSize || h > pageSize) throw new Error(`opal: clip ${c.name} is larger than pageSize`);
-    clips[c.name] = { ...c, frames: Array.from({ length: c.count }, () => alloc(w, h)) };
+    // v3 files carry each frame's visible box inside the clip rect: pack only that (bx/by = its offset in the rect)
+    const frames = Array.from({ length: c.count }, (_, k) => {
+      const [bx, by, bw, bh] = c.boxes?.[k] ?? [0, 0, c.rect[2], c.rect[3]];
+      const w = Math.max(1, Math.round(bw * scale)), h = Math.max(1, Math.round(bh * scale));
+      if (w > pageSize || h > pageSize) throw new Error(`opal: clip ${c.name} is larger than pageSize`);
+      return { ...alloc(w, h), bx, by, bw, bh };
+    });
+    clips[c.name] = { ...c, frames };
   }
   const pages = new Array(layout.length).fill(null), open = [], done = [];
   const pageCtx = (i) => {
@@ -152,8 +161,9 @@ export async function decodeOpal(src, { scale = 1, pageSize = 2048, bitmaps = fa
         if (gpu) gpu.merge(frame, fw, o.codedHeight); else gctx.drawImage(frame, 0, 0, fw, fh);
         for (const c of Object.values(clips)) {
           if (i < c.first || i >= c.first + c.count) continue;
-          const [x, y, w, h] = c.rect, at = c.frames[i - c.first], ctx = pageCtx(at.page);
-          if (gpu) {
+          const at = c.frames[i - c.first], ctx = pageCtx(at.page);
+          const x = c.rect[0] + at.bx, y = c.rect[1] + at.by, w = at.bw, h = at.bh;
+          if (!w || !h) { /* fully transparent frame: leave its cell clear */ } else if (gpu) {
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(gpu.canvas, x, y, w, h, at.x, at.y, at.w, at.h);
           } else {
