@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Opal keying preview</title>
+<style>
+  html, body { margin: 0; height: 100%; color: #123; font: 13px system-ui; overflow: hidden }
+  body { background: repeating-conic-gradient(#fff 0 25%, #e4e8ef 0 50%) 0 0/24px 24px }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh }
+  .label { position: fixed; left: 8px; background: #fffd; padding: 2px 6px; border-radius: 4px; transform: translateY(-50%) }
+</style>
+<canvas id="c"></canvas>
+<script type="module">
+  // ?files=a.opal,b.opal — one row per file, one sprite per clip. Light checker exposes fringes.
+  import { createOpal } from './opal.js';
+  const files = (new URLSearchParams(location.search).get('files') ??
+    '../examples/hero.opal,../examples/keyed/green.opal,../examples/keyed/magenta.opal,../examples/keyed/twotone.opal').split(',');
+  const canvas = document.getElementById('c'), dpr = devicePixelRatio;
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  const opal = await createOpal(canvas);
+  const rowH = innerHeight / files.length, colW = innerWidth / 6.4, k = Math.min(rowH / 260, colW / 260);
+  for (const [r, f] of files.entries()) {
+    const a = await opal.load(f);
+    const y = rowH * (r + 0.5);
+    Object.keys(a.clips).forEach((clip, c) => opal.spawn(a, clip, (colW * (c + 0.9)) * dpr, y * dpr, k * dpr));
+    document.body.insertAdjacentHTML('beforeend', `<div class="label" style="top:${y - rowH * 0.42}px">${f.split('/').pop()}</div>`);
+  }
+  let last = performance.now();
+  (function loop(now) { opal.render(Math.min((now - last) / 1000, 0.1)); last = now; requestAnimationFrame(loop); })(last);
+  setTimeout(() => (window.__ready = true), 1500);
+</script>
