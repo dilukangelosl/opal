@@ -205,7 +205,9 @@ WebCodecs (`VideoDecoder`) plus WebGL2:
 ## Reference
 - **Game examples:** `/web/game2/game.js` (Rift Warden: hit windows, projectiles, VFX, boss, afterimages,
   `?renderer=pixi`) and `/web/game/game.js` (Opal Dojo, a minimal game).
-- **Format v3:** `"OPAL"`, then version, flags, atlas and coded sizes, fps, codec string, avcC, clips (name, first,
-  count, loop, rect, origin, src, and with flag bit1 one visible box per frame inside the rect), then the frame index
-  and the AVCC frames. The runtime draws each frame's box, not the whole rect (less GPU fill); v2 files still load.
+- **Format v4:** `"OPAL"`, then version, flags, atlas and coded sizes, fps, codec string, avcC, clips (name, first,
+  count, loop, rect, origin, src, with flag bit1 one visible box per frame inside the rect and with bit2 one set of
+  corner cuts per frame), then the frame index and the AVCC frames. The runtime draws each frame's octagon (box minus
+  cuts), not the whole rect (less GPU fill), and packs the boxes into square GPU pages (about half the memory of one
+  layer per frame). v2 and v3 files still load; `opal upgrade f.opal` adds boxes and cuts without re-encoding.
   The Rust reader and writer are in `crates/opal-format`, and the JS reader is `parseOpal`.

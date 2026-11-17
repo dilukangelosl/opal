@@ -416,6 +416,7 @@ function gameOver() {
 // ---------- loop
 let last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0;
 function frame(now) {
+  if (mobile && now - last < 15) return requestAnimationFrame(frame); // ponytail: 60 fps cap on 120 Hz phones (half the GPU work, nothing visible lost)
   let dt = Math.min((now - last) / 1000, 1 / 20); last = now;
   if (state === 'play') {
     shake = Math.max(0, shake - dt);

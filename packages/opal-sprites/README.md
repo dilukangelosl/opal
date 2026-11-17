@@ -60,6 +60,13 @@ opal.render(dt);
 Bundlers: the runtime loads `opal.wasm` with `new URL('opal.wasm', import.meta.url)`, which Vite, webpack 5,
 Rollup and esbuild handle out of the box. Or pass your own URL: `createOpal(canvas, '/opal.wasm')`.
 
+### Phones
+Phone GPUs are fill-rate and memory bound, so the runtime does four things for them: it draws each frame as its
+visible octagon rather than a quad, packs frames into GPU pages sized per file (roughly half the memory of a layer
+per frame), picks the cheaper `bilinear` mip filter on touch devices (pass `filter: 'trilinear'` to override), and
+honours `scale` for smaller frames. On your side: cap `devicePixelRatio` at 1.5 or so when sizing the canvas, keep
+the game loop at 60 fps on 120 Hz phones, and draw the background into the same canvas instead of layering canvases.
+
 ## Any other renderer
 ```js
 import { decodeOpal, parseOpal } from 'opal-sprites';

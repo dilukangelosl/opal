@@ -80,7 +80,7 @@
         }
         opal.render(dt);
       };
-      info = `file ${(hero.bytes / 1024).toFixed(0)} KB · atlas ${hero.atlas.join('x')} → layer ${hero.layer.join('x')} × ${hero.frames}\n` +
+      info = `file ${(hero.bytes / 1024).toFixed(0)} KB · atlas ${hero.atlas.join('x')} × ${hero.frames} frames → ${hero.pages} pages of ${hero.layer.join('x')}\n` +
              `GPU cache ${(hero.vram / 1e6).toFixed(1)} MB · decoders running: 0`;
     } else {
       document.getElementById('c').remove();

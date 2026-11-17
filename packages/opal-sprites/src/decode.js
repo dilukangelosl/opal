@@ -20,10 +20,11 @@ export function parseOpal(buffer) {
   if (MAGIC.some((m, i) => b[i] !== m)) throw new Error('opal: not an .opal file');
   p = 4;
   const version = u16();
-  if (version !== 2 && version !== 3) throw new Error(`opal: unsupported version ${version}`);
+  if (version < 2 || version > 4) throw new Error(`opal: unsupported version ${version}`);
   const flags = u16();
   if (!(flags & 1)) throw new Error('opal: unsupported layout');
   const boxed = version >= 3 && (flags & 2) !== 0; // v3: per-frame visible boxes inside each clip rect
+  const cut = version >= 4 && (flags & 4) !== 0;   // v4: per-frame corner cuts of those boxes (Opal's own runtime draws the octagon)
   const [width, height, codedWidth, codedHeight] = [u16(), u16(), u16(), u16()];
   need(4); const fps = v.getFloat32(p, true); p += 4;
   const codec = str(u8());
@@ -34,7 +35,8 @@ export function parseOpal(buffer) {
     const first = u32(), count = u32(), loop = u8() !== 0;
     const rect = [u16(), u16(), u16(), u16()], origin = [u16(), u16()], src = [u16(), u16()];
     const boxes = boxed ? Array.from({ length: count }, () => [u16(), u16(), u16(), u16()]) : null;
-    clips.push({ name, first, count, loop, rect, origin, src, boxes });
+    const cuts = cut ? Array.from({ length: count }, () => [u16(), u16(), u16(), u16()]) : null;
+    clips.push({ name, first, count, loop, rect, origin, src, boxes, cuts });
   }
   const frames = [];
   let offset = 0;
@@ -48,6 +50,7 @@ export function parseOpal(buffer) {
   for (const c of clips) {
     if (!c.count || c.first + c.count > frames.length || c.rect[0] + c.rect[2] > width || c.rect[1] + c.rect[3] > height) throw new Error(`opal: corrupt clip ${c.name}`);
     if (c.boxes?.some((b) => b[0] + b[2] > c.rect[2] || b[1] + b[3] > c.rect[3])) throw new Error(`opal: corrupt frame box in clip ${c.name}`);
+    if (c.cuts?.some((k, f) => { const b = c.boxes?.[f] ?? [0, 0, c.rect[2], c.rect[3]]; return k.some((v) => v * 2 > Math.min(b[2], b[3])); })) throw new Error(`opal: corrupt frame cut in clip ${c.name}`);
   }
   return { version, width, height, codedWidth, codedHeight, fps, codec, description, clips, frames, data };
 }

@@ -4,13 +4,18 @@ export interface OpalClipInfo {
   box: [number, number, number, number];
 }
 export interface OpalAsset {
-  id: number; frames: number; fps: number; bytes: number; vram: number;
+  id: number; frames: number; fps: number; bytes: number;
+  /** GPU bytes this file takes: its frames' visible boxes packed into `pages` square layers of `layer` px. */
+  vram: number; pages: number;
   atlas: [number, number]; layer: [number, number];
   clips: Record<string, OpalClipInfo>;
 }
 export interface OpalRuntime {
   gl: WebGL2RenderingContext;
-  /** Decode an .opal file once into GPU memory. `scale` < 1 stores smaller frames (0.5 = 1/4 memory). */
+  /**
+   * Decode an .opal file once into GPU memory. `scale` < 1 stores smaller frames (0.5 = 1/4 memory).
+   * `filter` defaults to 'bilinear' on touch devices (half the sampling cost on phone GPUs) and 'trilinear' elsewhere.
+   */
   load(url: string | URL, opts?: { scale?: number; mipmaps?: boolean; filter?: 'trilinear' | 'bilinear' }): Promise<OpalAsset>;
   /** Advance animations by `dt` seconds and draw everything (one instanced draw per file). */
   render(dt: number): void;
@@ -32,6 +37,8 @@ export interface OpalClip {
   rect: [number, number, number, number]; origin: [number, number]; src: [number, number];
   /** v3 files: each frame's visible box [x, y, w, h] inside `rect` (w = 0: transparent frame). null in v2 files. */
   boxes: [number, number, number, number][] | null;
+  /** v4 files: per frame, how far each corner of its box is cut off (px along the edge): [top-left, top-right, bottom-right, bottom-left]. null before v4. */
+  cuts: [number, number, number, number][] | null;
 }
 export interface OpalFile {
   version: number; width: number; height: number; codedWidth: number; codedHeight: number;

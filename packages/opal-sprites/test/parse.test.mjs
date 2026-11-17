@@ -37,6 +37,7 @@ for (const url of files) {
       for (let f = 0; f < c.count; f++) {
         const box = c.boxes?.[f] ?? [0, 0, c.rect[2], c.rect[3]];
         assert.deepEqual(box, [0, 1, 2, 3].map((k) => w.opal_clip_frame_box(id, i, f, k)));
+        assert.deepEqual(c.cuts?.[f] ?? [0, 0, 0, 0], [0, 1, 2, 3].map((k) => w.opal_clip_frame_cut(id, i, f, k)));
       }
     });
   });
